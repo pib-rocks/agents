@@ -35,6 +35,6 @@ root_agent = Agent(
         update_jira_issue,
         add_jira_comment,
         get_jira_comments,
-        google_search, # Add Google Search tool
+        google_search, # Add Google Search tool AI! This created the following error:fast_api.py:637 - Error in event_generator: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': 'Tool use with function calling is unsupported', 'status': 'INVALID_ARGUMENT'}} Fix this!
     ],
 )
