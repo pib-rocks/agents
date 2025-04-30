@@ -42,7 +42,7 @@ def _parse_adf_text(adf_node: dict) -> str:
             text_content.append(_parse_adf_text(child_node))
     return "".join(text_content)
 
-def update_jira_issue(#AI! This method should also optionally update the status of the issue
+def update_jira_issue(
     issue_id: str,
     summary: Optional[str] = None,
     description: Optional[str] = None,
@@ -159,6 +159,122 @@ def update_jira_issue(#AI! This method should also optionally update the status 
             "status": "error",
             "error_message": f"An error occurred: {req_err}",
         }
+
+
+def get_jira_transitions(issue_id: str) -> dict:
+    """Retrieves available workflow transitions for a specified Jira issue.
+
+    Requires JIRA_INSTANCE_URL, JIRA_EMAIL, and JIRA_API_KEY environment variables.
+
+    Args:
+        issue_id (str): The Jira issue ID or key (e.g., 'PROJ-123').
+
+    Returns:
+        dict: status and result (report listing transitions) or error message.
+              Each transition includes its ID and the target status name.
+    """
+    jira_url = os.getenv("JIRA_INSTANCE_URL")
+    jira_email = os.getenv("JIRA_EMAIL")
+    jira_api_key = os.getenv("JIRA_API_KEY")
+
+    if not all([jira_url, jira_email, jira_api_key]):
+        return {
+            "status": "error",
+            "error_message": "Jira configuration missing in environment variables.",
+        }
+
+    api_url = f"{jira_url.rstrip('/')}/rest/api/3/issue/{issue_id}/transitions"
+    auth = (jira_email, jira_api_key)
+    headers = {"Accept": "application/json"}
+
+    try:
+        response = requests.get(api_url, headers=headers, auth=auth, timeout=15)
+        response.raise_for_status()
+
+        data = response.json()
+        transitions = data.get("transitions", [])
+
+        if not transitions:
+            return {"status": "success", "report": f"No available transitions found for issue '{issue_id}'."}
+
+        report_lines = [f"Available transitions for issue {issue_id}:"]
+        for t in transitions:
+            transition_id = t.get("id", "N/A")
+            target_status_name = t.get("to", {}).get("name", "N/A")
+            report_lines.append(f"  - Transition ID: {transition_id}, Target Status: {target_status_name}")
+
+        return {"status": "success", "report": "\n".join(report_lines)}
+
+    except requests.exceptions.HTTPError as http_err:
+        # Handle common errors
+        if response.status_code == 401: error_message = "Jira authentication failed."
+        elif response.status_code == 403: error_message = f"Permission denied for transitions on issue '{issue_id}'."
+        elif response.status_code == 404: error_message = f"Jira issue '{issue_id}' not found."
+        else: error_message = f"HTTP error getting transitions: {http_err}"
+        return {"status": "error", "error_message": error_message}
+    except requests.exceptions.RequestException as req_err:
+        return {"status": "error", "error_message": f"Error getting transitions: {req_err}"}
+
+
+def transition_jira_issue(issue_id: str, transition_id: str) -> dict:
+    """Performs a workflow transition on a specified Jira issue.
+
+    Requires JIRA_INSTANCE_URL, JIRA_EMAIL, and JIRA_API_KEY environment variables.
+
+    Args:
+        issue_id (str): The Jira issue ID or key (e.g., 'PROJ-123').
+        transition_id (str): The ID of the workflow transition to execute.
+
+    Returns:
+        dict: status and result message or error message.
+    """
+    jira_url = os.getenv("JIRA_INSTANCE_URL")
+    jira_email = os.getenv("JIRA_EMAIL")
+    jira_api_key = os.getenv("JIRA_API_KEY")
+
+    if not all([jira_url, jira_email, jira_api_key]):
+        return {
+            "status": "error",
+            "error_message": "Jira configuration missing in environment variables.",
+        }
+    if not transition_id:
+        return {"status": "error", "error_message": "Transition ID cannot be empty."}
+
+
+    api_url = f"{jira_url.rstrip('/')}/rest/api/3/issue/{issue_id}/transitions"
+    auth = (jira_email, jira_api_key)
+    headers = {"Accept": "application/json", "Content-Type": "application/json"}
+    payload = {"transition": {"id": transition_id}}
+
+    try:
+        response = requests.post(
+            api_url, headers=headers, auth=auth, data=json.dumps(payload), timeout=20
+        )
+        response.raise_for_status() # Raises HTTPError for bad responses (4xx or 5xx)
+
+        # Successful transition usually returns 204 No Content
+        return {
+            "status": "success",
+            "report": f"Jira issue '{issue_id}' transitioned successfully using transition ID '{transition_id}'.",
+        }
+
+    except requests.exceptions.HTTPError as http_err:
+        error_message = f"HTTP error occurred: {http_err}"
+        try:
+            error_details = response.json()
+            if "errorMessages" in error_details: error_message += f" Details: {'; '.join(error_details['errorMessages'])}"
+            if "errors" in error_details: error_message += f" Field Errors: {json.dumps(error_details['errors'])}"
+        except json.JSONDecodeError: pass
+
+        if response.status_code == 400: error_message = f"Bad request transitioning issue '{issue_id}'. Invalid transition ID '{transition_id}' or transition not allowed? Details: {error_message}"
+        elif response.status_code == 401: error_message = "Jira authentication failed."
+        elif response.status_code == 403: error_message = f"Permission denied for transition '{transition_id}' on issue '{issue_id}'."
+        elif response.status_code == 404: error_message = f"Jira issue '{issue_id}' or transition '{transition_id}' not found."
+
+        return {"status": "error", "error_message": error_message}
+    except requests.exceptions.RequestException as req_err:
+        return {"status": "error", "error_message": f"Error transitioning issue: {req_err}"}
+
 
 def add_jira_comment(issue_id: str, comment_body: str) -> dict:
     """Adds a comment to a specified Jira issue.
