@@ -36,6 +36,6 @@ root_agent = Agent(
         update_jira_issue,
         add_jira_comment,
         get_jira_comments,
-        #perform_google_search, # Use the custom Google Search function
+        perform_google_search, # Use the custom Google Search function
     ],
 )
