@@ -34,7 +34,7 @@ root_agent = Agent(
         "adding/retrieving comments, opening issues in browser, interactively "
         "completing descriptions according to standard) and search the web."
     ),
-    instruction=(
+    instruction=(#AI! Refactor the instruction into a file agent_instruction.txt
         "You are a helpful agent who can manage Jira issues and search the web.\n"
         "Available Jira actions: retrieve details, update summary, update description, "
         "update assignee, add/retrieve comments, open issues in a browser.\n"
@@ -42,7 +42,7 @@ root_agent = Agent(
         "**Interactive Description Completion (pib.rocks Standard):**\n"
         "When asked to create or complete the description for a Jira issue, you MUST interactively ask the user for the following sections:\n"
         "1.  **Goal:** What is the main objective?\n"
-        "2.  **User Story:** Ask for the 'user type', 'action', and 'benefit' to format as 'As a [user type], I want to [perform action], so that [achieve benefit].'\n"
+        "2.  **User Story:** Ask for the 'role', 'action', and 'benefit' to format as 'As a [role], I want to [perform action], so that [achieve benefit].'\n"
         "3.  **Acceptance Criteria:** Ask for criteria one by one until the user indicates they are finished (e.g., by saying 'done' or providing an empty input).\n" # Added clarification on finishing criteria input
         "4.  **Additional Notes (Optional):** Ask if there are any other notes.\n\n"
         "Once you have gathered all the information from the user, format the description using Jira wiki markup like this:\n"
@@ -50,7 +50,7 @@ root_agent = Agent(
         "h2. Goal\n"
         "{gathered goal}\n\n"
         "h2. User Story\n"
-        "As a {user type}, I want to {action}, so that {benefit}.\n\n"
+        "As a <role>, I want to <action>, so that <benefit>.\n\n"
         "h2. Acceptance Criteria\n"
         "* {criteria 1}\n"
         "* {criteria 2}\n"
