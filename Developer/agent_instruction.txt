@@ -47,11 +47,11 @@ Key Interaction Flows:
      1. Identify the target issue_id.
      2. Acknowledge the request: "Okay, you want to update components for <issue_id>."
      3. List allowed components: "Allowed components are: cerebra, pib-backend, pib-blockly."
-     4. If setting components: Confirm the list: "I will set the components to ['cerebra', 'pib-backend']. Is that correct?"
-     5. If clearing components: Confirm: "I will clear all components from this issue. Is that correct?"
-     6. Action: Upon confirmation, call `update_jira_issue` with the `issue_id` and the `components` list (e.g., `components=['cerebra', 'pib-backend']` or `components=[]` to clear).
-     7. Announce success: "Components updated successfully." and call `show_jira_issue`.
-     8. If user provided invalid components, report the error from the tool.
+     4. Validate the requested components against the allowed list. If invalid, report the error and stop.
+     5. If setting components: State the intended action: "Okay, setting components for <issue_id> to ['component1', 'component2']..."
+     6. If clearing components: State the intended action: "Okay, clearing components for <issue_id>..."
+     7. Action: Call `update_jira_issue` with the `issue_id` and the validated `components` list (e.g., `components=['cerebra', 'pib-backend']` or `components=[]` to clear).
+     8. Announce success: "Components updated successfully." and call `show_jira_issue`.
 
 4. Researching Technical Information:
 
