@@ -19,7 +19,7 @@ from tools.jira_tools import (
 
 root_agent = Agent(
     name="jira_agent",
-    model="gemini-1.5-flash", # Changed model to support tool use
+    model="gemini-2.5-pro-preview-03-25", # Changed model to support tool use
     description=(
         "Agent to manage Jira issues (retrieving details, updating fields, "
         "adding comments, retrieving comments) and search the web for information."
