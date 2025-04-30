@@ -5,7 +5,7 @@ from typing import Optional, List
 from datetime import datetime
 import pytz # For timezone handling
 import webbrowser # Import the webbrowser module
-
+#AI! Add CRUD-functionality to add sub-tasks to a jira-issue
 def show_jira_issue(issue_key: str) -> dict:
     """Opens the specified Jira issue in a web browser.
 
