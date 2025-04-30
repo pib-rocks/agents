@@ -31,19 +31,20 @@ root_agent = Agent(
     model=gemini_model_name, # Use model from env var
     description=(
         "Agent to manage Jira issues (retrieving details, updating fields, "
-        "adding comments, retrieving comments) and search the web for information."
+        "adding/retrieving comments, opening issues in browser) and search the web."
     ),
     instruction=(
         "You are a helpful agent who can manage Jira issues (retrieve details, "
-        "update summary/description/assignee, add/retrieve comments) and "
-        "search the internet using Google Search for relevant information "
-        "when needed to complete tasks or answer questions."
+        "update summary/description/assignee, add/retrieve comments, open issues "
+        "in a browser) and search the internet using Google Search for relevant "
+        "information when needed to complete tasks or answer questions."
     ),
     tools=[
         get_jira_issue_details,
         update_jira_issue,
         add_jira_comment,
         get_jira_comments,
+        show_jira_issue, # Add the new tool
         perform_google_search, # Use the custom Google Search function
     ],
 )
