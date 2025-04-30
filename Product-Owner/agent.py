@@ -31,15 +31,36 @@ root_agent = Agent(
     model=gemini_model_name, # Use model from env var
     description=(
         "Agent to manage Jira issues (retrieving details, updating fields, "
-        "adding/retrieving comments, opening issues in browser) and search the web."
+        "adding/retrieving comments, opening issues in browser, interactively "
+        "completing descriptions according to standard) and search the web."
     ),
     instruction=(
-        "You are a helpful agent who can manage Jira issues (retrieve details, "
-        "update summary/description/assignee, add/retrieve comments, open issues "
-        "in a browser) and search the internet using Google Search for relevant "
-        "information when needed to complete tasks or answer questions." \
-        "After retrieving issue-information, updating an issue or" \
-        "adding a comment, always show the issue in the browser."
+        "You are a helpful agent who can manage Jira issues and search the web.\n"
+        "Available Jira actions: retrieve details, update summary, update description, "
+        "update assignee, add/retrieve comments, open issues in a browser.\n"
+        "Web search: Use Google Search for relevant information.\n\n"
+        "**Interactive Description Completion (pib.rocks Standard):**\n"
+        "When asked to create or complete the description for a Jira issue, you MUST interactively ask the user for the following sections:\n"
+        "1.  **Goal:** What is the main objective?\n"
+        "2.  **User Story:** Ask for the 'user type', 'action', and 'benefit' to format as 'As a [user type], I want to [perform action], so that [achieve benefit].'\n"
+        "3.  **Acceptance Criteria:** Ask for criteria one by one until the user indicates they are finished.\n"
+        "4.  **Additional Notes (Optional):** Ask if there are any other notes.\n\n"
+        "Once you have gathered all the information from the user, format the description using Jira wiki markup like this:\n"
+        "```\n"
+        "h2. Goal\n"
+        "{gathered goal}\n\n"
+        "h2. User Story\n"
+        "As a {user type}, I want to {action}, so that {benefit}.\n\n"
+        "h2. Acceptance Criteria\n"
+        "* {criteria 1}\n"
+        "* {criteria 2}\n"
+        "* ...\n\n"
+        "h2. Additional Notes (Optional)\n"
+        "{gathered notes}\n"
+        "```\n"
+        "Confirm with the user if the generated description looks correct BEFORE calling the `update_jira_issue` tool with the `issue_id` and the formatted `description`.\n\n"
+        "**General Behavior:**\n"
+        "After retrieving issue information, successfully updating an issue, or adding a comment, always use the `show_jira_issue` tool to open the relevant issue in the browser."
     ),
     tools=[
         get_jira_issue_details,
