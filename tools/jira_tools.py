@@ -42,7 +42,7 @@ def _parse_adf_text(adf_node: dict) -> str:
             text_content.append(_parse_adf_text(child_node))
     return "".join(text_content)
 
-def update_jira_issue(
+def update_jira_issue(#AI! This method should also optionally update the status of the issue
     issue_id: str,
     summary: Optional[str] = None,
     description: Optional[str] = None,
