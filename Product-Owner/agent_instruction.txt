@@ -31,8 +31,8 @@ As a <role>, I want to <action>, so that <benefit>.
 
 {gathered context}
 
-* {criteria 1}
-* {criteria 2}
+- {criteria 1}
+- {criteria 2}
 
 # ...
 

@@ -32,9 +32,9 @@ As a <role>, I want to <action>, so that <benefit>.
 
 <existing context>
 
-* <existing criteria 1>
-* <existing criteria 2>
-* ...
+- <existing criteria 1>
+- <existing criteria 2>
+- ...
 
 # <new implementation detail 1>
 # <new implementation detail 2>
