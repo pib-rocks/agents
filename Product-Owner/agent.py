@@ -17,8 +17,8 @@ from tools.jira_tools import (
     add_jira_comment,
     get_jira_comments,
     show_jira_issue,
-    get_jira_transitions, # Import new tool
-    transition_jira_issue, # Import new tool
+    get_jira_transitions,
+    transition_jira_issue,
 )
 
 # Get model name from environment variable, with a default fallback
@@ -26,7 +26,7 @@ from tools.jira_tools import (
 # Assuming it should be here based on previous steps.
 from dotenv import load_dotenv
 load_dotenv()
-gemini_model_name = os.getenv("GEMINI_MODEL_NAME", "gemini-1.5-flash")
+gemini_model_name = os.getenv("GEMINI_MODEL_NAME", "gemini-2.0-flash")
 
 # --- Load Agent Instruction ---
 instruction_file_path = os.path.join(os.path.dirname(__file__), "agent_instruction.txt")
@@ -46,7 +46,7 @@ root_agent = Agent(
     name="jira_agent",
     model=gemini_model_name, # Use model from env var
     description=(
-        "Agent to manage Jira issues (retrieving details, updating fields, "
+        "Agent to manage Jira issues (retrieving details, updating fields, "#AI! Update the description, so that it fits the Product-Owner-Role of this agent
         "adding/retrieving comments, opening issues in browser, interactively "
         "completing descriptions according to standard) and search the web."
     ),
