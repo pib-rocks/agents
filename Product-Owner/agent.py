@@ -19,7 +19,7 @@ from tools.jira_tools import (
 
 root_agent = Agent(
     name="jira_agent",
-    model="gemini-2.0-flash", # Specify the model
+    model="gemini-1.5-flash", # Changed model to support tool use
     description=(
         "Agent to manage Jira issues (retrieving details, updating fields, "
         "adding comments, retrieving comments) and search the web for information."
@@ -35,6 +35,6 @@ root_agent = Agent(
         update_jira_issue,
         add_jira_comment,
         get_jira_comments,
-        google_search, # Add Google Search tool AI! This created the following error:fast_api.py:637 - Error in event_generator: 400 INVALID_ARGUMENT. {'error': {'code': 400, 'message': 'Tool use with function calling is unsupported', 'status': 'INVALID_ARGUMENT'}} Fix this!
+        google_search, # Add Google Search tool
     ],
 )
