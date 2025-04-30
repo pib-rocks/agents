@@ -19,7 +19,9 @@ from tools.jira_tools import (
     show_jira_issue,
     get_jira_transitions,
     transition_jira_issue,
-    # Removed step tools: set_implementation_step_status, get_current_implementation_step, get_next_implementation_step
+    create_jira_subtask, # Add sub-task tool
+    get_jira_subtasks,   # Add sub-task tool
+    delete_jira_issue,   # Add sub-task tool
 )
 
 # Get model name from environment variable, with a default fallback
@@ -60,7 +62,9 @@ root_agent = Agent(
         show_jira_issue,
         get_jira_transitions,
         transition_jira_issue,
-        # Removed step tools
+        create_jira_subtask,
+        get_jira_subtasks,
+        delete_jira_issue,
         perform_google_search, # Use the custom Google Search function
     ],
 )

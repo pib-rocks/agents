@@ -5,7 +5,203 @@ from typing import Optional, List
 from datetime import datetime
 import pytz # For timezone handling
 import webbrowser # Import the webbrowser module
-#AI! Add CRUD-functionality to add sub-tasks to a jira-issue
+# Note: 're' import removed previously
+
+# --- Sub-task Management Tools ---
+
+def create_jira_subtask(parent_issue_key: str, summary: str, subtask_issue_type_id: str) -> dict:
+    """Creates a new sub-task for a given parent issue.
+
+    Requires JIRA_INSTANCE_URL, JIRA_EMAIL, JIRA_API_KEY environment variables.
+    Also requires the specific Issue Type ID for sub-tasks in the target project.
+
+    Args:
+        parent_issue_key (str): The key of the parent issue (e.g., 'PROJ-123').
+        summary (str): The summary (title) for the new sub-task.
+        subtask_issue_type_id (str): The specific ID for the sub-task issue type
+                                     in the parent issue's project. This needs
+                                     to be known beforehand.
+
+    Returns:
+        dict: status and result (new sub-task key) or error message.
+    """
+    jira_url = os.getenv("JIRA_INSTANCE_URL")
+    jira_email = os.getenv("JIRA_EMAIL")
+    jira_api_key = os.getenv("JIRA_API_KEY")
+
+    if not all([jira_url, jira_email, jira_api_key]):
+        return {"status": "error", "error_message": "Jira configuration missing."}
+    if not parent_issue_key or not summary or not subtask_issue_type_id:
+        return {"status": "error", "error_message": "Parent key, summary, and sub-task type ID are required."}
+
+    # Need project key - fetch parent issue details to get it
+    parent_details_url = f"{jira_url.rstrip('/')}/rest/api/3/issue/{parent_issue_key}?fields=project"
+    auth = (jira_email, jira_api_key)
+    headers = {"Accept": "application/json"}
+    project_key = None
+    try:
+        parent_response = requests.get(parent_details_url, headers=headers, auth=auth, timeout=10)
+        parent_response.raise_for_status()
+        project_key = parent_response.json().get("fields", {}).get("project", {}).get("key")
+        if not project_key:
+             raise ValueError("Could not extract project key from parent issue.")
+    except requests.exceptions.RequestException as e:
+        return {"status": "error", "error_message": f"Failed to fetch parent issue details to get project key: {e}"}
+    except ValueError as e:
+         return {"status": "error", "error_message": str(e)}
+
+
+    api_url = f"{jira_url.rstrip('/')}/rest/api/3/issue"
+    headers = {"Accept": "application/json", "Content-Type": "application/json"}
+
+    payload = {
+        "fields": {
+            "project": {"key": project_key},
+            "parent": {"key": parent_issue_key},
+            "summary": summary,
+            "issuetype": {"id": subtask_issue_type_id},
+            # Add other required fields if necessary for your project's sub-task creation screen
+            # "description": { ... } # Optional description
+        }
+    }
+
+    try:
+        response = requests.post(
+            api_url, headers=headers, auth=auth, data=json.dumps(payload), timeout=20
+        )
+        response.raise_for_status()
+
+        new_issue_data = response.json()
+        new_issue_key = new_issue_data.get("key")
+        return {
+            "status": "success",
+            "report": f"Sub-task '{new_issue_key}' created successfully for parent '{parent_issue_key}'.",
+            "subtask_key": new_issue_key
+        }
+
+    except requests.exceptions.HTTPError as http_err:
+        error_message = f"HTTP error creating sub-task: {http_err}"
+        try:
+            error_details = response.json()
+            if "errorMessages" in error_details: error_message += f" Details: {'; '.join(error_details['errorMessages'])}"
+            if "errors" in error_details: error_message += f" Field Errors: {json.dumps(error_details['errors'])}"
+        except json.JSONDecodeError: pass
+        # Add specific error checks if needed (e.g., invalid project, issue type, permissions)
+        return {"status": "error", "error_message": error_message}
+    except requests.exceptions.RequestException as req_err:
+        return {"status": "error", "error_message": f"Error creating sub-task: {req_err}"}
+
+
+def get_jira_subtasks(parent_issue_key: str) -> dict:
+    """Retrieves sub-tasks for a specified parent Jira issue.
+
+    Requires JIRA_INSTANCE_URL, JIRA_EMAIL, and JIRA_API_KEY environment variables.
+
+    Args:
+        parent_issue_key (str): The Jira issue ID or key of the parent (e.g., 'PROJ-123').
+
+    Returns:
+        dict: status and result (report listing sub-tasks) or error message.
+              Each sub-task includes its key, summary, and status.
+    """
+    jira_url = os.getenv("JIRA_INSTANCE_URL")
+    jira_email = os.getenv("JIRA_EMAIL")
+    jira_api_key = os.getenv("JIRA_API_KEY")
+
+    if not all([jira_url, jira_email, jira_api_key]):
+        return {"status": "error", "error_message": "Jira configuration missing."}
+
+    # Fetch parent issue details including the subtasks field
+    api_url = f"{jira_url.rstrip('/')}/rest/api/3/issue/{parent_issue_key}?fields=subtasks"
+    auth = (jira_email, jira_api_key)
+    headers = {"Accept": "application/json"}
+
+    try:
+        response = requests.get(api_url, headers=headers, auth=auth, timeout=15)
+        response.raise_for_status()
+
+        data = response.json()
+        subtasks = data.get("fields", {}).get("subtasks", [])
+
+        if not subtasks:
+            return {"status": "success", "report": f"No sub-tasks found for issue '{parent_issue_key}'."}
+
+        report_lines = [f"Sub-tasks for issue {parent_issue_key}:"]
+        for task in subtasks:
+            task_key = task.get("key", "N/A")
+            summary = task.get("fields", {}).get("summary", "N/A")
+            status = task.get("fields", {}).get("status", {}).get("name", "N/A")
+            report_lines.append(f"  - Key: {task_key}, Status: {status}, Summary: {summary}")
+
+        return {"status": "success", "report": "\n".join(report_lines)}
+
+    except requests.exceptions.HTTPError as http_err:
+        if response.status_code == 401: error_message = "Jira authentication failed."
+        elif response.status_code == 403: error_message = f"Permission denied for issue '{parent_issue_key}'."
+        elif response.status_code == 404: error_message = f"Jira issue '{parent_issue_key}' not found."
+        else: error_message = f"HTTP error getting sub-tasks: {http_err}"
+        return {"status": "error", "error_message": error_message}
+    except requests.exceptions.RequestException as req_err:
+        return {"status": "error", "error_message": f"Error getting sub-tasks: {req_err}"}
+
+
+def delete_jira_issue(issue_key: str) -> dict:
+    """Deletes a Jira issue (including sub-tasks). Use with extreme caution!
+
+    Requires JIRA_INSTANCE_URL, JIRA_EMAIL, and JIRA_API_KEY environment variables.
+
+    Args:
+        issue_key (str): The Jira issue ID or key to delete (e.g., 'PROJ-123', 'SUB-456').
+
+    Returns:
+        dict: status and result message or error message.
+    """
+    jira_url = os.getenv("JIRA_INSTANCE_URL")
+    jira_email = os.getenv("JIRA_EMAIL")
+    jira_api_key = os.getenv("JIRA_API_KEY")
+
+    if not all([jira_url, jira_email, jira_api_key]):
+        return {"status": "error", "error_message": "Jira configuration missing."}
+    if not issue_key:
+        return {"status": "error", "error_message": "Issue key cannot be empty."}
+
+    # Add a confirmation step here? Or rely on agent confirmation?
+    # For now, proceed directly based on agent call.
+
+    api_url = f"{jira_url.rstrip('/')}/rest/api/3/issue/{issue_key}"
+    auth = (jira_email, jira_api_key)
+    headers = {"Accept": "application/json"}
+
+    try:
+        response = requests.delete(api_url, headers=headers, auth=auth, timeout=20)
+        response.raise_for_status() # Raises HTTPError for bad responses (4xx or 5xx)
+
+        # Successful deletion usually returns 204 No Content
+        return {
+            "status": "success",
+            "report": f"Jira issue '{issue_key}' deleted successfully.",
+        }
+
+    except requests.exceptions.HTTPError as http_err:
+        error_message = f"HTTP error deleting issue: {http_err}"
+        try:
+            error_details = response.json()
+            if "errorMessages" in error_details: error_message += f" Details: {'; '.join(error_details['errorMessages'])}"
+            if "errors" in error_details: error_message += f" Field Errors: {json.dumps(error_details['errors'])}"
+        except json.JSONDecodeError: pass
+
+        if response.status_code == 401: error_message = "Jira authentication failed."
+        elif response.status_code == 403: error_message = f"Permission denied to delete issue '{issue_key}'."
+        elif response.status_code == 404: error_message = f"Jira issue '{issue_key}' not found."
+        # Jira might return 400 if issue has sub-tasks and deleteSubtasks=false (default)
+        # Or other validation errors.
+        return {"status": "error", "error_message": error_message}
+    except requests.exceptions.RequestException as req_err:
+        return {"status": "error", "error_message": f"Error deleting issue: {req_err}"}
+
+# --- End of Sub-task Management Tools ---
+
+
 def show_jira_issue(issue_key: str) -> dict:
     """Opens the specified Jira issue in a web browser.
 
