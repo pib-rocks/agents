@@ -42,13 +42,13 @@ def create_jira_subtask(
     if not parent_issue_key or not summary:
         return {"status": "error", "error_message": "Parent key and summary are required."}
 
-    # Validate components if provided
+    # Validate components if provided (using the renamed constant)
     if components:
-        invalid_components = [c for c in components if c not in ALLOWED_SUBTASK_COMPONENTS]
+        invalid_components = [c for c in components if c not in ALLOWED_COMPONENTS]
         if invalid_components:
             return {
                 "status": "error",
-                "error_message": f"Invalid component(s): {', '.join(invalid_components)}. Allowed components are: {', '.join(ALLOWED_SUBTASK_COMPONENTS)}."
+                "error_message": f"Invalid component(s): {', '.join(invalid_components)}. Allowed components are: {', '.join(ALLOWED_COMPONENTS)}."
             }
 
     # Need project key - fetch parent issue details to get it
@@ -263,9 +263,10 @@ def update_jira_issue(
     issue_id: str,
     summary: Optional[str] = None,
     description: Optional[str] = None,
-    assignee_account_id: Optional[str] = None
+    assignee_account_id: Optional[str] = None,
+    components: Optional[List[str]] = None # Added components parameter
 ) -> dict:
-    """Updates fields (summary, description, assignee) for a specified Jira issue.
+    """Updates fields (summary, description, assignee, components) for a specified Jira issue.
 
     Requires JIRA_INSTANCE_URL, JIRA_EMAIL, and JIRA_API_KEY environment
     variables to be set.
@@ -278,6 +279,9 @@ def update_jira_issue(
         assignee_account_id (Optional[str]): The Atlassian Account ID of the new
             assignee. Set to None to leave unassigned or unchanged if already
             assigned. Optional.
+        components (Optional[List[str]]): A list of component names to set.
+            Must be from the allowed list: ['cerebra', 'pib-backend', 'pib-blockly'].
+            Provide an empty list `[]` to clear components. Optional.
 
     Returns:
         dict: status and result message or error message.
@@ -295,10 +299,12 @@ def update_jira_issue(
             ),
         }
 
-    if not any([summary, description, assignee_account_id]):
+    # Check if at least one field is provided for update
+    # Note: components=[] is a valid update (to clear), so check components is not None
+    if not any([summary, description, assignee_account_id is not None, components is not None]):
          return {
             "status": "error",
-            "error_message": "No fields provided to update.",
+            "error_message": "No fields provided to update (summary, description, assignee, or components).",
         }
 
     api_url = f"{jira_url.rstrip('/')}/rest/api/3/issue/{issue_id}"
@@ -323,6 +329,23 @@ def update_jira_issue(
     if assignee_account_id is not None: # Allow explicitly setting assignee
          # Use {'id': None} to unassign, or {'id': 'account_id'} to assign
         payload_fields["assignee"] = {"id": assignee_account_id} if assignee_account_id else None
+    # Handle components update
+    if components is not None:
+        if not isinstance(components, list):
+             return {"status": "error", "error_message": "Components must be provided as a list of strings."}
+        # Validate non-empty list against allowed components
+        if components: # Only validate if the list is not empty
+            invalid_components = [c for c in components if c not in ALLOWED_COMPONENTS]
+            if invalid_components:
+                return {
+                    "status": "error",
+                    "error_message": f"Invalid component(s): {', '.join(invalid_components)}. Allowed components are: {', '.join(ALLOWED_COMPONENTS)}."
+                }
+            # Format for Jira API [{ "name": "comp1" }, { "name": "comp2" }]
+            payload_fields["components"] = [{"name": c} for c in components]
+        else:
+            # Set components to empty list to clear them
+            payload_fields["components"] = []
 
 
     payload = {"fields": payload_fields}
