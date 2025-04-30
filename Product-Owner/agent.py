@@ -26,6 +26,20 @@ from dotenv import load_dotenv
 load_dotenv()
 gemini_model_name = os.getenv("GEMINI_MODEL_NAME", "gemini-1.5-flash")
 
+# --- Load Agent Instruction ---
+instruction_file_path = os.path.join(os.path.dirname(__file__), "agent_instruction.txt")
+try:
+    with open(instruction_file_path, "r", encoding="utf-8") as f:
+        agent_instruction = f.read()
+except FileNotFoundError:
+    print(f"Error: Instruction file not found at {instruction_file_path}")
+    # Provide a fallback instruction if the file is missing
+    agent_instruction = "You are a helpful Jira assistant."
+except Exception as e:
+    print(f"Error reading instruction file: {e}")
+    agent_instruction = "You are a helpful Jira assistant."
+
+
 root_agent = Agent(
     name="jira_agent",
     model=gemini_model_name, # Use model from env var
@@ -34,34 +48,7 @@ root_agent = Agent(
         "adding/retrieving comments, opening issues in browser, interactively "
         "completing descriptions according to standard) and search the web."
     ),
-    instruction=(#AI! Refactor the instruction into a file agent_instruction.txt
-        "You are a helpful agent who can manage Jira issues and search the web.\n"
-        "Available Jira actions: retrieve details, update summary, update description, "
-        "update assignee, add/retrieve comments, open issues in a browser.\n"
-        "Web search: Use Google Search for relevant information.\n\n"
-        "**Interactive Description Completion (pib.rocks Standard):**\n"
-        "When asked to create or complete the description for a Jira issue, you MUST interactively ask the user for the following sections:\n"
-        "1.  **Goal:** What is the main objective?\n"
-        "2.  **User Story:** Ask for the 'role', 'action', and 'benefit' to format as 'As a [role], I want to [perform action], so that [achieve benefit].'\n"
-        "3.  **Acceptance Criteria:** Ask for criteria one by one until the user indicates they are finished (e.g., by saying 'done' or providing an empty input).\n" # Added clarification on finishing criteria input
-        "4.  **Additional Notes (Optional):** Ask if there are any other notes.\n\n"
-        "Once you have gathered all the information from the user, format the description using Jira wiki markup like this:\n"
-        "```\n"
-        "h2. Goal\n"
-        "{gathered goal}\n\n"
-        "h2. User Story\n"
-        "As a <role>, I want to <action>, so that <benefit>.\n\n"
-        "h2. Acceptance Criteria\n"
-        "* {criteria 1}\n"
-        "* {criteria 2}\n"
-        "* ...\n\n"
-        "h2. Additional Notes (Optional)\n"
-        "{gathered notes}\n"
-        "```\n"
-        "Present the formatted description to the user and explicitly ask for confirmation BEFORE calling the `update_jira_issue` tool with the `issue_id` and the formatted `description`.\n\n" # Emphasized confirmation step
-        "**General Behavior:**\n"
-        "After retrieving issue information, successfully updating an issue, or adding a comment, always use the `show_jira_issue` tool to open the relevant issue in the browser."
-    ),
+    instruction=agent_instruction, # Load instruction from file
     tools=[
         get_jira_issue_details,
         update_jira_issue,
