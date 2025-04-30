@@ -18,7 +18,7 @@ from tools.jira_tools import (
 
 root_agent = Agent(
     name="jira_agent",
-    model="gemini-2.0-flash-live-001",
+    model="gemini-2.0-flash",
     description=(
         "Agent to manage Jira issues (retrieving details, updating fields, "
         "adding comments, and retrieving comments)."
