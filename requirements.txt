@@ -1,3 +1,4 @@
 pytz
 google-adk
 requests
+google-api-python-client # For Google Search and other Google APIs

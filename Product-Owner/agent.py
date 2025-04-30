@@ -1,6 +1,7 @@
 import datetime
 from zoneinfo import ZoneInfo
 from google.adk.agents import Agent
+from google.adk.tools import google_search # Import Google Search tool
 # Import the Jira tools from the tools directory
 
 # Ensure the tools directory is in the Python path
@@ -18,20 +19,22 @@ from tools.jira_tools import (
 
 root_agent = Agent(
     name="jira_agent",
-    model="gemini-2.0-flash",
+    model="gemini-2.0-flash", # Specify the model
     description=(
         "Agent to manage Jira issues (retrieving details, updating fields, "
-        "adding comments, and retrieving comments)."
+        "adding comments, retrieving comments) and search the web for information."
     ),
     instruction=(
-        "You are a helpful agent who can retrieve details for Jira issues,"
-        " update their summary, description, or assignee (using account ID),"
-        " add comments, and retrieve existing comments."
+        "You are a helpful agent who can manage Jira issues (retrieve details, "
+        "update summary/description/assignee, add/retrieve comments) and "
+        "search the internet using Google Search for relevant information "
+        "when needed to complete tasks or answer questions."
     ),
     tools=[
         get_jira_issue_details,
         update_jira_issue,
         add_jira_comment,
         get_jira_comments,
-    ],#AI! Add the google-search to the tools, so that the agent can retrieve information from the internet
+        google_search, # Add Google Search tool
+    ],
 )
