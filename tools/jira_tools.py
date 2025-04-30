@@ -6,10 +6,11 @@ from datetime import datetime
 import pytz # For timezone handling
 import webbrowser # Import the webbrowser module
 # Note: 're' import removed previously
-#AI! Make it possible to update the components of an issue also 
+
 # --- Constants ---
 SUBTASK_ISSUE_TYPE_ID = "10003" # Hardcoded Sub-task Issue Type ID
-ALLOWED_SUBTASK_COMPONENTS = ["cerebra", "pib-backend", "pib-blockly"]
+# Renamed constant for broader applicability
+ALLOWED_COMPONENTS = ["cerebra", "pib-backend", "pib-blockly"]
 
 # --- Sub-task Management Tools ---
 
