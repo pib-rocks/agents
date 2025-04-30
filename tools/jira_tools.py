@@ -5,7 +5,7 @@ from typing import Optional, List
 from datetime import datetime
 import pytz # For timezone handling
 import webbrowser # Import the webbrowser module
-
+#AI! Each issue has ordered implementation steps. By default they have no prefix. If they are in processing, they should have the prefix "[processing]". When successfully finished, they should have the prefix "[done]". Create methods to set the prefixes, to get the currently processing step and to get the first step without prefix.
 def show_jira_issue(issue_key: str) -> dict:
     """Opens the specified Jira issue in a web browser.
 
