@@ -6,7 +6,7 @@ from datetime import datetime
 import pytz # For timezone handling
 import webbrowser # Import the webbrowser module
 # Note: 're' import removed previously
-
+#AI! Make it possible for subtasks to set components. If set, components for sub-tasks must be one of these three: cerebra, pib-backend and pib-blockly
 # --- Constants ---
 SUBTASK_ISSUE_TYPE_ID = "10003" # Hardcoded Sub-task Issue Type ID
 
