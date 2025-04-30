@@ -33,5 +33,5 @@ root_agent = Agent(
         update_jira_issue,
         add_jira_comment,
         get_jira_comments,
-    ],
+    ],#AI! Add the google-search to the tools, so that the agent can retrieve information from the internet
 )
