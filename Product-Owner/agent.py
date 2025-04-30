@@ -16,7 +16,7 @@ from tools.jira_tools import (
     update_jira_issue,
     add_jira_comment,
     get_jira_comments,
-    show_jira_issue, # Import the new tool
+    show_jira_issue,
 )
 
 # Get model name from environment variable, with a default fallback
@@ -44,7 +44,7 @@ root_agent = Agent(
         update_jira_issue,
         add_jira_comment,
         get_jira_comments,
-        show_jira_issue, # Add the new tool
+        show_jira_issue,
         perform_google_search, # Use the custom Google Search function
     ],
 )
