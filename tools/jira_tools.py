@@ -2,7 +2,7 @@ import os
 import requests
 import json
 from typing import Optional
-
+#AI! Add methods for adding comments to issues and retrieving existing comments
 def update_jira_issue(
     issue_id: str,
     summary: Optional[str] = None,
