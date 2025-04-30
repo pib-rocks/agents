@@ -19,6 +19,9 @@ from tools.jira_tools import (
     show_jira_issue,
     get_jira_transitions,
     transition_jira_issue,
+    set_implementation_step_status, # Add step tool
+    get_current_implementation_step, # Add step tool
+    get_next_implementation_step, # Add step tool
 )
 
 # Get model name from environment variable, with a default fallback
@@ -57,8 +60,11 @@ root_agent = Agent(
         add_jira_comment,
         get_jira_comments,
         show_jira_issue,
-        get_jira_transitions, # Add new tool
-        transition_jira_issue, # Add new tool
+        get_jira_transitions,
+        transition_jira_issue,
+        set_implementation_step_status, # Add step tool
+        get_current_implementation_step, # Add step tool
+        get_next_implementation_step, # Add step tool
         perform_google_search, # Use the custom Google Search function
     ],
 )

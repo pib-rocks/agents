@@ -5,7 +5,40 @@ from typing import Optional, List
 from datetime import datetime
 import pytz # For timezone handling
 import webbrowser # Import the webbrowser module
-#AI! Each issue has ordered implementation steps. By default they have no prefix. If they are in processing, they should have the prefix "[processing]". When successfully finished, they should have the prefix "[done]". Create methods to set the prefixes, to get the currently processing step and to get the first step without prefix.
+import re # For step parsing
+
+# --- Constants for Step Prefixes ---
+PROCESSING_PREFIX = "[processing]"
+DONE_PREFIX = "[done]"
+STEP_PREFIXES = [PROCESSING_PREFIX, DONE_PREFIX]
+# Regex to find list items (unordered or ordered) and capture prefix + step text
+# Allows optional whitespace at start, captures list marker (* or #), optional prefix, and step text.
+STEP_REGEX = re.compile(r"^\s*([*#])\s+(?:(\[(?:processing|done)\])\s+)?(.*)")
+
+def _get_plain_description(issue_id: str) -> Optional[str]:
+    """Helper to get the plain text description of an issue."""
+    details = get_jira_issue_details(issue_id)
+    if details["status"] == "success":
+        # Extract description from the report string (assuming standard format)
+        report = details["report"]
+        desc_marker = "Description: "
+        desc_start = report.find(desc_marker)
+        if desc_start != -1:
+            # Find the start of the description text after the marker
+            text_start = desc_start + len(desc_marker)
+            # Return the rest of the string from that point
+            return report[text_start:].strip()
+        else:
+            # Handle case where description marker isn't found (e.g., empty description)
+             # Check if the raw details had an empty description
+             if "[Unknown Description Format]" in report or "[Empty or Complex Comment Format]" in report or "No description provided." in report:
+                 return "" # Return empty string for no description
+             else:
+                 # Unexpected format
+                 return None # Indicate error or inability to parse
+    return None # Return None if fetching details failed
+
+
 def show_jira_issue(issue_key: str) -> dict:
     """Opens the specified Jira issue in a web browser.
 
@@ -469,6 +502,128 @@ def get_jira_comments(issue_id: str) -> dict:
             "status": "error",
             "error_message": f"An error occurred: {req_err}",
         }
+
+
+# --- Implementation Step Management Tools ---
+
+def set_implementation_step_status(issue_id: str, step_text: str, status: str) -> dict:
+    """Sets the status prefix ([processing] or [done]) for a specific implementation step in the issue description.
+
+    Args:
+        issue_id (str): The Jira issue ID or key.
+        step_text (str): The exact text of the step (without any prefix).
+        status (str): The desired status ('processing' or 'done').
+
+    Returns:
+        dict: status and result message or error message.
+    """
+    if status not in ['processing', 'done']:
+        return {"status": "error", "error_message": "Invalid status. Must be 'processing' or 'done'."}
+    if not step_text:
+        return {"status": "error", "error_message": "Step text cannot be empty."}
+
+    current_description = _get_plain_description(issue_id)
+    if current_description is None:
+        return {"status": "error", "error_message": f"Could not retrieve description for issue '{issue_id}'."}
+    if current_description == "":
+         return {"status": "error", "error_message": f"Issue '{issue_id}' has an empty description. Cannot set step status."}
+
+
+    new_prefix = f"[{status}]"
+    target_step_found = False
+    modified_lines = []
+    lines = current_description.splitlines()
+
+    for line in lines:
+        match = STEP_REGEX.match(line)
+        if match:
+            list_marker, current_prefix, current_step_text = match.groups()
+            current_step_text = current_step_text.strip() # Clean whitespace
+
+            # Check if this is the target step (matching text, ignoring current prefix)
+            if current_step_text == step_text.strip():
+                target_step_found = True
+                # Reconstruct the line with the new prefix
+                modified_line = f"{list_marker} {new_prefix} {current_step_text}"
+                modified_lines.append(modified_line)
+                # print(f"DEBUG: Found step '{step_text}'. Updating line to: '{modified_line}'") # Debug print
+            else:
+                # Keep other steps as they are
+                modified_lines.append(line)
+        else:
+            # Keep non-step lines as they are
+            modified_lines.append(line)
+
+    if not target_step_found:
+        return {"status": "error", "error_message": f"Step '{step_text}' not found in the description of issue '{issue_id}'."}
+
+    # Join lines and update the issue
+    new_description = "\n".join(modified_lines)
+    # print(f"DEBUG: Updating issue '{issue_id}' with new description:\n{new_description}") # Debug print
+    update_result = update_jira_issue(issue_id=issue_id, description=new_description)
+
+    if update_result["status"] == "success":
+        return {"status": "success", "report": f"Status for step '{step_text}' in issue '{issue_id}' set to '{status}'."}
+    else:
+        # Pass through the error from update_jira_issue
+        return update_result
+
+
+def get_current_implementation_step(issue_id: str) -> dict:
+    """Gets the implementation step currently marked as [processing] in the issue description.
+
+    Args:
+        issue_id (str): The Jira issue ID or key.
+
+    Returns:
+        dict: status and the text of the processing step, or a message if none found/error.
+    """
+    description = _get_plain_description(issue_id)
+    if description is None:
+        return {"status": "error", "error_message": f"Could not retrieve description for issue '{issue_id}'."}
+    if description == "":
+         return {"status": "success", "report": f"Issue '{issue_id}' has an empty description. No steps found."}
+
+
+    lines = description.splitlines()
+    for line in lines:
+        match = STEP_REGEX.match(line)
+        if match:
+            _, prefix, step_text = match.groups()
+            if prefix == PROCESSING_PREFIX:
+                return {"status": "success", "report": step_text.strip()}
+
+    return {"status": "success", "report": f"No step marked as '{PROCESSING_PREFIX}' found in issue '{issue_id}'."}
+
+
+def get_next_implementation_step(issue_id: str) -> dict:
+    """Gets the first implementation step in the description that is not marked as [processing] or [done].
+
+    Args:
+        issue_id (str): The Jira issue ID or key.
+
+    Returns:
+        dict: status and the text of the next step, or a message if none found/error.
+    """
+    description = _get_plain_description(issue_id)
+    if description is None:
+        return {"status": "error", "error_message": f"Could not retrieve description for issue '{issue_id}'."}
+    if description == "":
+         return {"status": "success", "report": f"Issue '{issue_id}' has an empty description. No steps found."}
+
+    lines = description.splitlines()
+    for line in lines:
+        match = STEP_REGEX.match(line)
+        if match:
+            _, prefix, step_text = match.groups()
+            # Check if prefix is None (no prefix) or not one of the known status prefixes
+            if prefix is None or prefix not in STEP_PREFIXES:
+                return {"status": "success", "report": step_text.strip()} # Found the next step
+
+    return {"status": "success", "report": f"No more implementation steps found to process in issue '{issue_id}'."}
+
+
+# --- End of Implementation Step Management Tools ---
 
 
 def get_jira_issue_details(issue_id: str) -> dict:
