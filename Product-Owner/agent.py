@@ -2,7 +2,6 @@ import datetime
 from zoneinfo import ZoneInfo
 from google.adk.agents import Agent
 # Import tools from the tools directory
-from ..tools.google_search_tool import perform_google_search # Import custom Google Search function
 
 # Ensure the tools directory is in the Python path
 import sys
@@ -11,7 +10,7 @@ import os
 # This might not be strictly necessary if the project is structured as a package,
 # but it ensures the tools module can be found when running agent.py directly.
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
+from tools.google_search_tool import perform_google_search # Import custom Google Search function
 from tools.jira_tools import (
     get_jira_issue_details,
     update_jira_issue,
@@ -37,6 +36,6 @@ root_agent = Agent(
         update_jira_issue,
         add_jira_comment,
         get_jira_comments,
-        perform_google_search, # Use the custom Google Search function
+        #perform_google_search, # Use the custom Google Search function
     ],
 )
