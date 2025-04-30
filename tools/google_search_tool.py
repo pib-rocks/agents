@@ -3,7 +3,7 @@ This module provides the google_search tool from the google-adk library
 for easy reuse in agents.
 """
 from google.adk.tools import google_search
-
+#AI! Implement this as a function-call, means executed by the client, instead of a gemini-tool
 # Re-export the tool so it can be imported from this module
 __all__ = ['google_search']
 
