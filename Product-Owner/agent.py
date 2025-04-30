@@ -2,7 +2,7 @@ import datetime
 from zoneinfo import ZoneInfo
 from google.adk.agents import Agent
 # Import tools from the tools directory
-from ..tools.google_search_tool import google_search # Import Google Search tool
+from ..tools.google_search_tool import perform_google_search # Import custom Google Search function
 
 # Ensure the tools directory is in the Python path
 import sys
@@ -37,6 +37,6 @@ root_agent = Agent(
         update_jira_issue,
         add_jira_comment,
         get_jira_comments,
-        google_search, # Add Google Search tool
+        perform_google_search, # Use the custom Google Search function
     ],
 )
