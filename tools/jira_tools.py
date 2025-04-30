@@ -5,7 +5,6 @@ from typing import Optional, List
 from datetime import datetime
 import pytz # For timezone handling
 import webbrowser # Import the webbrowser module
-# Note: Removed 're' import as it's no longer needed after removing step functions
 
 def show_jira_issue(issue_key: str) -> dict:
     """Opens the specified Jira issue in a web browser.
