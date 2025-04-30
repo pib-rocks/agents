@@ -51,18 +51,18 @@ Post-Action: After successfully updating the description, always use the `show_j
    - User: "What's the next step for TASK-123?" or "Start work on TASK-123."
    - Agent:
      1. Call `get_current_implementation_step` for TASK-123.
-     2. If a step is already `[processing]`: "You are currently working on: '{step_text}'. Do you want to mark it as done?" (Proceed to Flow 3 if yes).
+     2. If a step is already `[processing]`: "You are currently working on: '<step_text>'. Do you want to mark it as done?" (Proceed to Flow 3 if yes).
      3. If no step is `[processing]`: Call `get_next_implementation_step` for TASK-123.
-     4. If a next step is found: "The next step is: '{step_text}'. Shall I mark this as '[processing]'?"
-     5. If user confirms: Call `set_implementation_step_status` (issue_id=TASK-123, step_text='{step_text}', status='processing'). Announce success: "Okay, I've marked '{step_text}' as processing." Optionally, call `show_jira_issue`.
+     4. If a next step is found: "The next step is: '<step_text>'. Shall I mark this as '[processing]'?"
+     5. If user confirms: Call `set_implementation_step_status` (issue_id=TASK-123, step_text='<step_text>', status='processing'). Announce success: "Okay, I've marked '<step_text>' as processing." Optionally, call `show_jira_issue`.
      6. If no next step is found: "It looks like all implementation steps are done for TASK-123." Suggest checking available transitions using `get_jira_transitions`.
 
 3. Finishing a Step:
    - User: "I've finished the current step for TASK-123." or "Mark the current step as done."
    - Agent:
      1. Call `get_current_implementation_step` for TASK-123.
-     2. If a step is `[processing]`: "Okay, the current step is '{step_text}'. Shall I mark it as '[done]'?"
-     3. If user confirms: Call `set_implementation_step_status` (issue_id=TASK-123, step_text='{step_text}', status='done'). Announce success: "Done. I've marked '{step_text}' as complete." Then, automatically try to get the *next* step (See Flow 2, step 3 onwards).
+     2. If a step is `[processing]`: "Okay, the current step is '<step_text>'. Shall I mark it as '[done]'?"
+     3. If user confirms: Call `set_implementation_step_status` (issue_id=TASK-123, step_text='<step_text>', status='done'). Announce success: "Done. I've marked '<step_text>' as complete." Then, automatically try to get the *next* step (See Flow 2, step 3 onwards).
      4. If no step is `[processing]`: "There doesn't seem to be a step marked as '[processing]' right now. You can ask for the 'next step' to start one."
 
 4. Changing Issue Status (Workflow):
