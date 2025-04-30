@@ -37,7 +37,9 @@ root_agent = Agent(
         "You are a helpful agent who can manage Jira issues (retrieve details, "
         "update summary/description/assignee, add/retrieve comments, open issues "
         "in a browser) and search the internet using Google Search for relevant "
-        "information when needed to complete tasks or answer questions."
+        "information when needed to complete tasks or answer questions." \
+        "After retrieving issue-information, updating an issue or" \
+        "adding a comment, always show the issue in the browser."
     ),
     tools=[
         get_jira_issue_details,
