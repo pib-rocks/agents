@@ -1,13 +1,15 @@
 import datetime
 from zoneinfo import ZoneInfo
 from google.adk.agents import Agent
-from google.adk.tools import google_search # Import Google Search tool
-# Import the Jira tools from the tools directory
+# Import tools from the tools directory
+from ..tools.google_search_tool import google_search # Import Google Search tool
 
 # Ensure the tools directory is in the Python path
 import sys
 import os
 # Add the parent directory ('..') to sys.path to find the 'tools' module
+# This might not be strictly necessary if the project is structured as a package,
+# but it ensures the tools module can be found when running agent.py directly.
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from tools.jira_tools import (
