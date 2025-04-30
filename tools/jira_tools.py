@@ -5,8 +5,7 @@ from typing import Optional, List
 from datetime import datetime
 import pytz # For timezone handling
 import webbrowser # Import the webbrowser module
-# Note: 're' import removed previously
-
+#AI! The id for the issue-type "subtask" is 10003. Make this information available, so that the agent does not need to ask for it when working with subtasks
 # --- Sub-task Management Tools ---
 
 def create_jira_subtask(parent_issue_key: str, summary: str, subtask_issue_type_id: str) -> dict:
