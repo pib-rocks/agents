@@ -46,9 +46,9 @@ root_agent = Agent(
     name="jira_agent",
     model=gemini_model_name, # Use model from env var
     description=(
-        "Agent to manage Jira issues (retrieving details, updating fields, "#AI! Update this description, so that it fits the Developer-Role of the agent
-        "adding/retrieving comments, opening issues in browser, interactively "
-        "completing descriptions according to standard) and search the web."
+        "AI assistant for Developers using Jira. Helps with understanding assigned tasks, "
+        "retrieving issue details, updating status via transitions, adding technical comments, "
+        "updating assignees, opening issues in browser, and searching the web for technical context or solutions."
     ),
     instruction=agent_instruction, # Load instruction from file
     tools=[
