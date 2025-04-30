@@ -5,21 +5,22 @@ from typing import Optional, List
 from datetime import datetime
 import pytz # For timezone handling
 import webbrowser # Import the webbrowser module
-#AI! The id for the issue-type "subtask" is 10003. Make this information available, so that the agent does not need to ask for it when working with subtasks
+# Note: 're' import removed previously
+
+# --- Constants ---
+SUBTASK_ISSUE_TYPE_ID = "10003" # Hardcoded Sub-task Issue Type ID
+
 # --- Sub-task Management Tools ---
 
-def create_jira_subtask(parent_issue_key: str, summary: str, subtask_issue_type_id: str) -> dict:
-    """Creates a new sub-task for a given parent issue.
+def create_jira_subtask(parent_issue_key: str, summary: str) -> dict:
+    """Creates a new sub-task for a given parent issue using the default sub-task type ID.
 
     Requires JIRA_INSTANCE_URL, JIRA_EMAIL, JIRA_API_KEY environment variables.
-    Also requires the specific Issue Type ID for sub-tasks in the target project.
+    Uses the hardcoded SUBTASK_ISSUE_TYPE_ID ('10003').
 
     Args:
         parent_issue_key (str): The key of the parent issue (e.g., 'PROJ-123').
         summary (str): The summary (title) for the new sub-task.
-        subtask_issue_type_id (str): The specific ID for the sub-task issue type
-                                     in the parent issue's project. This needs
-                                     to be known beforehand.
 
     Returns:
         dict: status and result (new sub-task key) or error message.
@@ -30,8 +31,8 @@ def create_jira_subtask(parent_issue_key: str, summary: str, subtask_issue_type_
 
     if not all([jira_url, jira_email, jira_api_key]):
         return {"status": "error", "error_message": "Jira configuration missing."}
-    if not parent_issue_key or not summary or not subtask_issue_type_id:
-        return {"status": "error", "error_message": "Parent key, summary, and sub-task type ID are required."}
+    if not parent_issue_key or not summary:
+        return {"status": "error", "error_message": "Parent key and summary are required."}
 
     # Need project key - fetch parent issue details to get it
     parent_details_url = f"{jira_url.rstrip('/')}/rest/api/3/issue/{parent_issue_key}?fields=project"
@@ -58,7 +59,7 @@ def create_jira_subtask(parent_issue_key: str, summary: str, subtask_issue_type_
             "project": {"key": project_key},
             "parent": {"key": parent_issue_key},
             "summary": summary,
-            "issuetype": {"id": subtask_issue_type_id},
+            "issuetype": {"id": SUBTASK_ISSUE_TYPE_ID}, # Use hardcoded ID
             # Add other required fields if necessary for your project's sub-task creation screen
             # "description": { ... } # Optional description
         }
