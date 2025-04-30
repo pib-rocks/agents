@@ -4,7 +4,7 @@ import json
 from typing import Optional, List
 from datetime import datetime
 import pytz # For timezone handling
-
+#AI! Add a tool for showing a jira ticket with the issue_key as parameter and the fixed url = "https://pib-rocks.atlassian.net/browse/" opening the ticket using the webbrower module
 def _parse_adf_text(adf_node: dict) -> str:
     """Recursively extracts plain text from an ADF node."""
     text_content = []
