@@ -5,7 +5,7 @@ from typing import Optional, List
 from datetime import datetime
 import pytz # For timezone handling
 import webbrowser # Import the webbrowser module
-
+#AI! Create a new tool "interactively_complete_description" with the issue_key as parameter and a boolean result. This tool interviews the user via the large-language-model to iteratively complete the description according the the pib.rocks standard
 def show_jira_issue(issue_key: str) -> dict:
     """Opens the specified Jira issue in a web browser.
 
