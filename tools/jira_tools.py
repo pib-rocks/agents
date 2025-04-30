@@ -4,7 +4,34 @@ import json
 from typing import Optional, List
 from datetime import datetime
 import pytz # For timezone handling
-#AI! Add a tool for showing a jira ticket with the issue_key as parameter and the fixed url = "https://pib-rocks.atlassian.net/browse/" opening the ticket using the webbrower module
+import webbrowser # Import the webbrowser module
+
+def show_jira_issue(issue_key: str) -> dict:
+    """Opens the specified Jira issue in a web browser.
+
+    Args:
+        issue_key (str): The Jira issue key (e.g., 'PROJ-123').
+
+    Returns:
+        dict: status and result message or error message.
+    """
+    if not issue_key:
+        return {"status": "error", "error_message": "Issue key cannot be empty."}
+
+    # Use the fixed base URL provided
+    base_url = "https://pib-rocks.atlassian.net/browse/"
+    issue_url = f"{base_url}{issue_key}"
+
+    try:
+        opened = webbrowser.open(issue_url, new=2) # new=2: open in new tab if possible
+        if opened:
+            return {"status": "success", "report": f"Attempted to open Jira issue '{issue_key}' in the browser."}
+        else:
+            # Provide the URL in the report if opening failed, so the user can copy it
+            return {"status": "warning", "report": f"Failed to automatically open browser for issue '{issue_key}'. You can manually open: {issue_url}"}
+    except Exception as e:
+        return {"status": "error", "error_message": f"An error occurred while trying to open the browser: {e}"}
+
 def _parse_adf_text(adf_node: dict) -> str:
     """Recursively extracts plain text from an ADF node."""
     text_content = []

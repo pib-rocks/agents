@@ -16,11 +16,19 @@ from tools.jira_tools import (
     update_jira_issue,
     add_jira_comment,
     get_jira_comments,
+    show_jira_issue, # Import the new tool
 )
+
+# Get model name from environment variable, with a default fallback
+# Note: This line was added in a previous step (commit abb4a04) but wasn't in the provided file content.
+# Assuming it should be here based on previous steps.
+from dotenv import load_dotenv
+load_dotenv()
+gemini_model_name = os.getenv("GEMINI_MODEL_NAME", "gemini-1.5-flash")
 
 root_agent = Agent(
     name="jira_agent",
-    model="gemini-2.5-pro-preview-03-25", # Changed model to support tool use
+    model=gemini_model_name, # Use model from env var
     description=(
         "Agent to manage Jira issues (retrieving details, updating fields, "
         "adding comments, retrieving comments) and search the web for information."
