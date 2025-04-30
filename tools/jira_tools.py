@@ -6,21 +6,29 @@ from datetime import datetime
 import pytz # For timezone handling
 import webbrowser # Import the webbrowser module
 # Note: 're' import removed previously
-#AI! Make it possible for subtasks to set components. If set, components for sub-tasks must be one of these three: cerebra, pib-backend and pib-blockly
+
 # --- Constants ---
 SUBTASK_ISSUE_TYPE_ID = "10003" # Hardcoded Sub-task Issue Type ID
+ALLOWED_SUBTASK_COMPONENTS = ["cerebra", "pib-backend", "pib-blockly"]
 
 # --- Sub-task Management Tools ---
 
-def create_jira_subtask(parent_issue_key: str, summary: str) -> dict:
+def create_jira_subtask(
+    parent_issue_key: str,
+    summary: str,
+    components: Optional[List[str]] = None
+) -> dict:
     """Creates a new sub-task for a given parent issue using the default sub-task type ID.
 
     Requires JIRA_INSTANCE_URL, JIRA_EMAIL, JIRA_API_KEY environment variables.
     Uses the hardcoded SUBTASK_ISSUE_TYPE_ID ('10003').
+    Optionally sets components if provided and valid.
 
     Args:
         parent_issue_key (str): The key of the parent issue (e.g., 'PROJ-123').
         summary (str): The summary (title) for the new sub-task.
+        components (Optional[List[str]]): A list of component names to set.
+            Must be from the allowed list: ['cerebra', 'pib-backend', 'pib-blockly'].
 
     Returns:
         dict: status and result (new sub-task key) or error message.
@@ -33,6 +41,15 @@ def create_jira_subtask(parent_issue_key: str, summary: str) -> dict:
         return {"status": "error", "error_message": "Jira configuration missing."}
     if not parent_issue_key or not summary:
         return {"status": "error", "error_message": "Parent key and summary are required."}
+
+    # Validate components if provided
+    if components:
+        invalid_components = [c for c in components if c not in ALLOWED_SUBTASK_COMPONENTS]
+        if invalid_components:
+            return {
+                "status": "error",
+                "error_message": f"Invalid component(s): {', '.join(invalid_components)}. Allowed components are: {', '.join(ALLOWED_SUBTASK_COMPONENTS)}."
+            }
 
     # Need project key - fetch parent issue details to get it
     parent_details_url = f"{jira_url.rstrip('/')}/rest/api/3/issue/{parent_issue_key}?fields=project"
@@ -54,16 +71,20 @@ def create_jira_subtask(parent_issue_key: str, summary: str) -> dict:
     api_url = f"{jira_url.rstrip('/')}/rest/api/3/issue"
     headers = {"Accept": "application/json", "Content-Type": "application/json"}
 
-    payload = {
-        "fields": {
-            "project": {"key": project_key},
-            "parent": {"key": parent_issue_key},
-            "summary": summary,
-            "issuetype": {"id": SUBTASK_ISSUE_TYPE_ID}, # Use hardcoded ID
-            # Add other required fields if necessary for your project's sub-task creation screen
-            # "description": { ... } # Optional description
-        }
+    payload_fields = {
+        "project": {"key": project_key},
+        "parent": {"key": parent_issue_key},
+        "summary": summary,
+        "issuetype": {"id": SUBTASK_ISSUE_TYPE_ID}, # Use hardcoded ID
+        # Add other required fields if necessary for your project's sub-task creation screen
+        # "description": { ... } # Optional description
     }
+
+    # Add components to payload if valid ones were provided
+    if components:
+        payload_fields["components"] = [{"name": c} for c in components]
+
+    payload = {"fields": payload_fields}
 
     try:
         response = requests.post(
