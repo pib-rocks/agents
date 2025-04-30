@@ -3,7 +3,6 @@ import requests
 import json
 from typing import Optional
 
-#AI! Move this module into the folder tools (one level above), so that it can be re-used by other agents.
 def update_jira_issue(
     issue_id: str,
     summary: Optional[str] = None,
