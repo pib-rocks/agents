@@ -43,7 +43,7 @@ root_agent = Agent(
         "When asked to create or complete the description for a Jira issue, you MUST interactively ask the user for the following sections:\n"
         "1.  **Goal:** What is the main objective?\n"
         "2.  **User Story:** Ask for the 'user type', 'action', and 'benefit' to format as 'As a [user type], I want to [perform action], so that [achieve benefit].'\n"
-        "3.  **Acceptance Criteria:** Ask for criteria one by one until the user indicates they are finished.\n"
+        "3.  **Acceptance Criteria:** Ask for criteria one by one until the user indicates they are finished (e.g., by saying 'done' or providing an empty input).\n" # Added clarification on finishing criteria input
         "4.  **Additional Notes (Optional):** Ask if there are any other notes.\n\n"
         "Once you have gathered all the information from the user, format the description using Jira wiki markup like this:\n"
         "```\n"
@@ -58,7 +58,7 @@ root_agent = Agent(
         "h2. Additional Notes (Optional)\n"
         "{gathered notes}\n"
         "```\n"
-        "Confirm with the user if the generated description looks correct BEFORE calling the `update_jira_issue` tool with the `issue_id` and the formatted `description`.\n\n"
+        "Present the formatted description to the user and explicitly ask for confirmation BEFORE calling the `update_jira_issue` tool with the `issue_id` and the formatted `description`.\n\n" # Emphasized confirmation step
         "**General Behavior:**\n"
         "After retrieving issue information, successfully updating an issue, or adding a comment, always use the `show_jira_issue` tool to open the relevant issue in the browser."
     ),
