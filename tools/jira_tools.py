@@ -8,7 +8,7 @@ import webbrowser # Import the webbrowser module
 import re # For step parsing
 
 # --- Constants for Step Prefixes ---
-PROCESSING_PREFIX = "[processing]"
+PROCESSING_PREFIX = "[processing]" #AI! Remove all implementation step-related functionality from the whole project
 DONE_PREFIX = "[done]"
 STEP_PREFIXES = [PROCESSING_PREFIX, DONE_PREFIX]
 # Regex to find list items (unordered or ordered) and capture prefix + step text
