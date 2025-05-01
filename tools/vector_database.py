@@ -170,15 +170,14 @@ def add_acceptance_criterion(criterion_id: str, criterion_text: str, metadata_js
     Args:
         criterion_id (str): A unique identifier for the criterion (e.g., 'AC-1').
         criterion_text (str): The full text of the acceptance criterion.
-        metadata_json (Optional[str]): Optional JSON string representing metadata.
-                                       Expected schema based on acceptance_criteria_schema.json:#AI! Be much more precise to match the description here with the provided schema
-                                       '{
-                                           "type": "AcceptanceCriterion",
-                                           "source_jira_ticket": "PROJECT-123",
-                                           "requirement_ids": ["REQ-1"],
-                                           "test_case_ids": ["TC-1"]
-                                       }'
-                                       The 'type' field is strongly recommended.
+        metadata_json (Optional[str]): Optional JSON string representing metadata associated
+                                       with the acceptance criterion. Based on acceptance_criteria_schema.json,
+                                       this JSON object should contain the following keys:
+                                       - "type" (str): Must be "AcceptanceCriterion".
+                                       - "source_jira_ticket" (str): The originating Jira ticket key (e.g., "PROJECT-123").
+                                       - "requirement_ids" (List[str]): A list of IDs for associated requirements (e.g., ["REQ-1"]).
+                                       - "test_case_ids" (List[str]): A list of IDs for associated test cases (e.g., ["TC-1"]).
+                                       Example: '{ "type": "AcceptanceCriterion", "source_jira_ticket": "PROJECT-123", "requirement_ids": ["REQ-1"], "test_case_ids": ["TC-1"] }'
 
     Returns:
         Dict: Status dictionary indicating success or error.
