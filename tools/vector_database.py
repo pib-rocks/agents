@@ -221,11 +221,14 @@ def retrieve_similar_acceptance_criteria(query_text: str, n_results: int = 3, fi
     Args:
         query_text (str): The text to search for similar criteria.
         n_results (int): The maximum number of similar criteria to return. Defaults to 3.
-        filter_metadata_json (Optional[str]): Optional JSON string for metadata filtering.
+        filter_metadata_json (Optional[str]): Optional JSON string for metadata filtering based on the
+                                              fields defined in acceptance_criteria_schema.json
+                                              (e.g., "type", "source_jira_ticket", "requirement_ids", "test_case_ids").
                                               It's recommended to include '{"type": "AcceptanceCriterion"}'
-                                              in the filter if not filtering by other specific AC metadata.
-                                              Example: '{"type": "AcceptanceCriterion", "source_jira_ticket": "PR-123"}'
-                                              Uses ChromaDB's 'where' filter format.#AI! Be much more precise to match the description here with the provided schema
+                                              in the filter unless filtering by other specific AC metadata.
+                                              Example: To find ACs for a specific ticket:
+                                              '{"type": "AcceptanceCriterion", "source_jira_ticket": "PROJECT-123"}'
+                                              Uses ChromaDB's 'where' filter format (see ChromaDB docs for operators like $in, $eq, etc.).
 
     Returns:
         Dict: Status dictionary with results or error message.
