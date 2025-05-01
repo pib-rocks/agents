@@ -52,7 +52,7 @@ def add_requirement(requirement_id: str, requirement_text: str, metadata_json: O
                                            "source_jira_ticket": "PR-123",
                                            "acceptance_criteria_ids": ["AC-1", "AC-2"]
                                        }'
-                                       However, any valid JSON object is accepted.
+                                       However, any valid JSON object is accepted.#AI! Be much more precise to match teh description here with the json-description
 
     Returns:
         Dict: Status dictionary indicating success or error.
