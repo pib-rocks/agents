@@ -24,6 +24,17 @@ from tools.vector_database import ( # Import vector DB tools
     add_requirement,
     retrieve_similar_requirements,
     delete_requirement,
+    update_requirement,
+    modify_requirement_acceptance_criteria,
+    delete_requirement,
+    add_acceptance_criterion,
+    retrieve_similar_acceptance_criteria,
+    delete_acceptance_criterion,
+    update_acceptance_criterion,
+    add_test_case,
+    retrieve_similar_test_cases,
+    update_test_case,
+    delete_test_case
 )
 
 # Get model name from environment variable, with a default fallback
@@ -73,8 +84,17 @@ root_agent = Agent(
         # Vector DB Tools
         add_requirement,
         retrieve_similar_requirements,
+        update_requirement,
+        modify_requirement_acceptance_criteria,
         delete_requirement,
-        # Other Tools
-        perform_google_search,
+        # Acceptance Criteria Functions
+        add_acceptance_criterion,
+        retrieve_similar_acceptance_criteria,
+        delete_acceptance_criterion,
+        update_acceptance_criterion,
+        add_test_case,
+        retrieve_similar_test_cases,
+        update_test_case,
+        delete_test_case
     ],
 )
