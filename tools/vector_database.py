@@ -409,7 +409,7 @@ def add_test_case(test_case_id: str, test_case_document: str, metadata_json: Opt
                                            "title": "Verify successful login...",
                                            "source_jira_ticket": "PROJECT-123",
                                            "validates_ac_ids": ["AC-1"],
-                                           "test_steps": [...]
+                                           "test_steps": [...]#AI! Be much more precise to match the description here with the provided schema
                                        }'
                                        The 'type' field is strongly recommended.
 
