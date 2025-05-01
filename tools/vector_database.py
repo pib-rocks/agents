@@ -225,7 +225,7 @@ def retrieve_similar_acceptance_criteria(query_text: str, n_results: int = 3, fi
                                               It's recommended to include '{"type": "AcceptanceCriterion"}'
                                               in the filter if not filtering by other specific AC metadata.
                                               Example: '{"type": "AcceptanceCriterion", "source_jira_ticket": "PR-123"}'
-                                              Uses ChromaDB's 'where' filter format.
+                                              Uses ChromaDB's 'where' filter format.#AI! Be much more precise to match the description here with the provided schema
 
     Returns:
         Dict: Status dictionary with results or error message.
