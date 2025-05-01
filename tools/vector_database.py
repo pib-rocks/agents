@@ -324,7 +324,7 @@ def update_acceptance_criterion(criterion_id: str, new_criterion_text: Optional[
         new_metadata_json (Optional[str]): A JSON string representing the new metadata object.
                                            If provided, it *replaces* the existing metadata entirely.
                                            The 'type' field should ideally remain 'AcceptanceCriterion'.
-                                           If None, metadata is not updated.
+                                           If None, metadata is not updated.#AI! Be much more precise to match the description here with the provided schema
 
     Returns:
         Dict: Status dictionary indicating success or error.
