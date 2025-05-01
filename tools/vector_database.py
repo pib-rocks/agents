@@ -171,7 +171,7 @@ def add_acceptance_criterion(criterion_id: str, criterion_text: str, metadata_js
         criterion_id (str): A unique identifier for the criterion (e.g., 'AC-1').
         criterion_text (str): The full text of the acceptance criterion.
         metadata_json (Optional[str]): Optional JSON string representing metadata.
-                                       Expected schema based on acceptance_criteria_schema.json:
+                                       Expected schema based on acceptance_criteria_schema.json:#AI! Be much more precise to match the description here with the provided schema
                                        '{
                                            "type": "AcceptanceCriterion",
                                            "source_jira_ticket": "PROJECT-123",
