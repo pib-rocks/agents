@@ -155,10 +155,18 @@ def update_requirement(requirement_id: str, new_requirement_text: Optional[str] 
         new_requirement_text (Optional[str]): The new text for the requirement. If None, text is not updated.
         new_metadata_json (Optional[str]): A JSON string representing the *complete* new metadata object.
                                            If provided, it *replaces* the existing metadata entirely.
-                                           The structure should follow requirement_schema.json, including
-                                           keys like "type" (must be "Requirement"), "source_jira_ticket",
-                                           and "acceptance_criteria_ids".
-                                           If None, metadata is not updated.
+                                           The structure of the metadata must be like this:
+                                           
+                                            {  
+                                            "metadata": {
+                                                "type": "functional", # type can only be "functional" or "non-functional"
+                                                "source_jira_ticket": "PR-123",
+                                                "acceptance_criteria_ids": [
+                                                    "AC-1",
+                                                    "AC-2"
+                                                ]}
+                                            }
+
 
     Returns:
         Dict: Status dictionary indicating success or error.
@@ -228,7 +236,7 @@ def update_requirement(requirement_id: str, new_requirement_text: Optional[str] 
         # Catch potential ChromaDB errors or other issues during upsert
         return {"status": "error", "error_message": f"Failed to upsert requirement '{requirement_id}': {e}"}
 
-
+#AI! Remove the method "modify_requirement_acceptance_criteria" from here and all references in other modules
 def modify_requirement_acceptance_criteria(requirement_id: str, add_criteria_ids: Optional[List[str]] = None, remove_criteria_ids: Optional[List[str]] = None) -> Dict:
     """Adds or removes acceptance criteria IDs from a specific requirement's metadata in the vector database. 
 
