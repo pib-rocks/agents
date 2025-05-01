@@ -1,7 +1,7 @@
 """
 Manages storing and retrieving software requirements, acceptance criteria,
 and potentially other artifacts using a ChromaDB vector database.
-"""#AI! Add a function to update an acceptance-criterium
+"""
 import os
 import chromadb
 from chromadb.utils import embedding_functions
@@ -313,6 +313,82 @@ def delete_acceptance_criterion(criterion_id: str) -> Dict:
         return {"status": "error", "error_message": f"Failed to delete criterion '{criterion_id}': {e}"}
 
 
+def update_acceptance_criterion(criterion_id: str, new_criterion_text: Optional[str] = None, new_metadata_json: Optional[str] = None) -> Dict:
+    """Updates the text and/or metadata of an existing acceptance criterion.
+
+    Args:
+        criterion_id (str): The unique identifier of the criterion to update.
+        new_criterion_text (Optional[str]): The new text for the criterion. If None, text is not updated.
+        new_metadata_json (Optional[str]): A JSON string representing the new metadata object.
+                                           If provided, it *replaces* the existing metadata entirely.
+                                           The 'type' field should ideally remain 'AcceptanceCriterion'.
+                                           If None, metadata is not updated.
+
+    Returns:
+        Dict: Status dictionary indicating success or error.
+    """
+    if not criterion_id:
+        return {"status": "error", "error_message": "Criterion ID cannot be empty."}
+    if new_criterion_text is None and new_metadata_json is None:
+        return {"status": "error", "error_message": "Must provide either new text or new metadata to update."}
+
+    # Check if the criterion exists and is an Acceptance Criterion
+    try:
+        existing = collection.get(ids=[criterion_id], include=['metadatas'])
+        if not existing or not existing.get('ids'):
+            return {"status": "error", "error_message": f"Acceptance Criterion '{criterion_id}' not found."}
+        
+        existing_metadata = existing['metadatas'][0] if existing.get('metadatas') else {}
+        if existing_metadata.get('type') != 'AcceptanceCriterion':
+             return {"status": "error", "error_message": f"Item '{criterion_id}' found, but it is not an Acceptance Criterion (type: {existing_metadata.get('type')}). Update aborted."}
+
+    except Exception as e:
+        return {"status": "error", "error_message": f"Error checking existence of criterion '{criterion_id}': {e}"}
+
+
+    updates_to_make = {}
+    parsed_new_metadata = None
+
+    if new_criterion_text is not None:
+        if not new_criterion_text.strip():
+             return {"status": "error", "error_message": "New criterion text cannot be empty."}
+        updates_to_make['documents'] = [new_criterion_text]
+
+    if new_metadata_json is not None:
+        try:
+            parsed_new_metadata = json.loads(new_metadata_json)
+            if not isinstance(parsed_new_metadata, dict):
+                raise ValueError("New metadata must be a JSON object (dictionary).")
+            # Ensure the type remains correct, or warn if it's changed/missing
+            if 'type' not in parsed_new_metadata:
+                 print(f"Warning: Updating metadata for '{criterion_id}' without a 'type' field. Setting to 'AcceptanceCriterion'.")
+                 parsed_new_metadata['type'] = 'AcceptanceCriterion'
+            elif parsed_new_metadata.get('type') != 'AcceptanceCriterion':
+                 print(f"Warning: Updating metadata for '{criterion_id}' with a type other than 'AcceptanceCriterion' ('{parsed_new_metadata.get('type')}').")
+            
+            updates_to_make['metadatas'] = [parsed_new_metadata]
+        except json.JSONDecodeError:
+            return {"status": "error", "error_message": "Invalid JSON format provided for new metadata."}
+        except ValueError as ve:
+             return {"status": "error", "error_message": str(ve)}
+
+    if not updates_to_make:
+         # This case should be caught earlier, but as a safeguard
+         return {"status": "error", "error_message": "No valid updates provided."}
+
+    try:
+        collection.update(
+            ids=[criterion_id],
+            **updates_to_make
+        )
+        update_fields = []
+        if 'documents' in updates_to_make: update_fields.append("text")
+        if 'metadatas' in updates_to_make: update_fields.append("metadata")
+        return {"status": "success", "report": f"Acceptance Criterion '{criterion_id}' updated successfully ({', '.join(update_fields)})."}
+    except Exception as e:
+        return {"status": "error", "error_message": f"Failed to update criterion '{criterion_id}': {e}"}
+
+
 # Export public functions
 __all__ = [
     'add_requirement',
@@ -320,5 +396,6 @@ __all__ = [
     'delete_requirement',
     'add_acceptance_criterion',
     'retrieve_similar_acceptance_criteria',
-    'delete_acceptance_criterion'
+    'delete_acceptance_criterion',
+    'update_acceptance_criterion'
 ]
