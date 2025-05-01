@@ -6,7 +6,7 @@ from datetime import datetime
 import pytz # For timezone handling
 import webbrowser # Import the webbrowser module
 # Note: 're' import removed previously
-
+#AI! The Jira-instance for this project uses a custom field in its tickets to specify the category of the issue. The field is represented by as a radio-group, so only one value can be selected. The ID of this custom field is 10035. Make it possible to set and get this category of issues.
 # --- Constants ---
 SUBTASK_ISSUE_TYPE_ID = "10003" # Hardcoded Sub-task Issue Type ID
 # Renamed constant for broader applicability
