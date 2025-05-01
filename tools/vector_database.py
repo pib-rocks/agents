@@ -146,9 +146,9 @@ def retrieve_similar_requirements(query_text: str, n_results: int = 3, filter_me
     except Exception as e:
         return {"status": "error", "error_message": f"Failed to retrieve requirements: {e}"}
 
-#AI! Calling "update_requirement" with a list of ACs in the metadata resulted in the following error_message: "Failed to update requirement 'REQ-1': Expected metadata value to be a str, int, float or bool, got ['AC-1'] which is a list in update." Enable to set a list of ACs in this method.
+
 def update_requirement(requirement_id: str, new_requirement_text: Optional[str] = None, new_metadata_json: Optional[str] = None) -> Dict:
-    """Updates the text and/or metadata of an existing requirement in the vector database.
+    """Updates the text and/or metadata of an existing requirement using upsert for metadata compatibility.
 
     Args:
         requirement_id (str): The unique identifier of the requirement to update.
@@ -168,27 +168,33 @@ def update_requirement(requirement_id: str, new_requirement_text: Optional[str] 
     if new_requirement_text is None and new_metadata_json is None:
         return {"status": "error", "error_message": "Must provide either new text or new metadata to update."}
 
-    # Check if the requirement exists and is a Requirement
+    # 1. Check if the requirement exists, is a Requirement, and get current data
     try:
-        existing = collection.get(ids=[requirement_id], include=['metadatas'])
+        # Include documents to get current text if only metadata is updated
+        existing = collection.get(ids=[requirement_id], include=['metadatas', 'documents'])
         if not existing or not existing.get('ids'):
             return {"status": "error", "error_message": f"Requirement '{requirement_id}' not found."}
 
         existing_metadata = existing['metadatas'][0] if existing.get('metadatas') else {}
+        existing_document = existing['documents'][0] if existing.get('documents') else None
+
         if existing_metadata.get('type') != 'Requirement':
              return {"status": "error", "error_message": f"Item '{requirement_id}' found, but it is not a Requirement (type: {existing_metadata.get('type')}). Update aborted."}
+        if existing_document is None and new_requirement_text is None:
+             # Should not happen if item exists, but safeguard
+             return {"status": "error", "error_message": f"Could not retrieve existing document text for requirement '{requirement_id}' and no new text provided."}
 
     except Exception as e:
-        return {"status": "error", "error_message": f"Error checking existence of requirement '{requirement_id}': {e}"}
+        return {"status": "error", "error_message": f"Error retrieving requirement '{requirement_id}': {e}"}
 
-    updates_to_make = {}
-    parsed_new_metadata = None
-
+    # 2. Determine the final document text and metadata
+    final_document_text = existing_document
     if new_requirement_text is not None:
         if not new_requirement_text.strip():
              return {"status": "error", "error_message": "New requirement text cannot be empty."}
-        updates_to_make['documents'] = [new_requirement_text]
+        final_document_text = new_requirement_text
 
+    final_metadata = existing_metadata
     if new_metadata_json is not None:
         try:
             parsed_new_metadata = json.loads(new_metadata_json)
@@ -200,27 +206,27 @@ def update_requirement(requirement_id: str, new_requirement_text: Optional[str] 
                  parsed_new_metadata['type'] = 'Requirement'
             elif parsed_new_metadata.get('type') != 'Requirement':
                  print(f"Warning: Updating metadata for '{requirement_id}' with a type other than 'Requirement' ('{parsed_new_metadata.get('type')}').")
-
-            updates_to_make['metadatas'] = [parsed_new_metadata]
+            # Replace entire metadata
+            final_metadata = parsed_new_metadata
         except json.JSONDecodeError:
             return {"status": "error", "error_message": "Invalid JSON format provided for new metadata."}
         except ValueError as ve:
              return {"status": "error", "error_message": str(ve)}
 
-    if not updates_to_make:
-         return {"status": "error", "error_message": "No valid updates provided."}
-
+    # 3. Use upsert to perform the update
     try:
-        collection.update(
+        collection.upsert(
             ids=[requirement_id],
-            **updates_to_make
+            documents=[final_document_text], # Provide the final text
+            metadatas=[final_metadata]      # Provide the final metadata
         )
         update_fields = []
-        if 'documents' in updates_to_make: update_fields.append("text")
-        if 'metadatas' in updates_to_make: update_fields.append("metadata")
+        if new_requirement_text is not None: update_fields.append("text")
+        if new_metadata_json is not None: update_fields.append("metadata")
         return {"status": "success", "report": f"Requirement '{requirement_id}' updated successfully ({', '.join(update_fields)})."}
     except Exception as e:
-        return {"status": "error", "error_message": f"Failed to update requirement '{requirement_id}': {e}"}
+        # Catch potential ChromaDB errors or other issues during upsert
+        return {"status": "error", "error_message": f"Failed to upsert requirement '{requirement_id}': {e}"}
 
 
 def modify_requirement_acceptance_criteria(requirement_id: str, add_criteria_ids: Optional[List[str]] = None, remove_criteria_ids: Optional[List[str]] = None) -> Dict:
