@@ -92,9 +92,11 @@ def retrieve_similar_requirements(query_text: str, n_results: int = 3, filter_me
         query_text (str): The text to search for similar requirements (e.g., a new user story, a feature description).
         n_results (int): The maximum number of similar requirements to return. Defaults to 3.
         filter_metadata_json (Optional[str]): Optional JSON string representing a metadata dictionary
-                                              to filter results based on the stored metadata.
-                                              Example: '{"type": "Requirement", "source_jira_ticket": "PR-123"}'
-                                              Uses ChromaDB's 'where' filter format.#AI! Be much more precise to match the description here with the provided schema
+                                              to filter results based on the stored metadata fields defined
+                                              in requirement_schema.json (e.g., "type", "source_jira_ticket").
+                                              Example: To find requirements from a specific ticket:
+                                              '{"type": "Requirement", "source_jira_ticket": "PROJECT-123"}'
+                                              Uses ChromaDB's 'where' filter format (see ChromaDB docs for operators like $in, $eq, etc.).
 
     Returns:
         Dict: Status dictionary with results or error message. Results include IDs, text, distance, and metadata.
