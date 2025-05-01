@@ -535,7 +535,7 @@ def update_test_case(test_case_id: str, new_test_case_document: Optional[str] = 
         new_metadata_json (Optional[str]): A JSON string representing the new metadata object.
                                            If provided, it *replaces* the existing metadata entirely.
                                            The 'type' field should ideally remain 'TestCase'.
-                                           If None, metadata is not updated.
+                                           If None, metadata is not updated.#AI! Be much more precise to match the description here with the provided schema
 
     Returns:
         Dict: Status dictionary indicating success or error.
