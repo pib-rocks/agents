@@ -36,7 +36,7 @@ collection = client.get_or_create_collection(
 
 # --- Tool Functions ---
 
-def add_requirement(requirement_id: str, requirement_text: str, metadata: Optional[Dict] = None) -> Dict:
+def add_requirement(requirement_id: str, requirement_text: str, metadata: Optional[Dict] = None) -> Dict:#AI! Using this function as tool for a LLM resulted in this error: Failed to parse the parameter item: Dict of function add_requirement for automatic function calling. Automatic function calling works best with simpler function signature schema,consider manually parse your function declaration for function add_requirement. Fix it!
     """
     Adds or updates a software requirement in the vector database.
 
