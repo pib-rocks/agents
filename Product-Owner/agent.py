@@ -10,7 +10,7 @@ import os
 # This might not be strictly necessary if the project is structured as a package,
 # but it ensures the tools module can be found when running agent.py directly.
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from tools.google_search_tool import perform_google_search # Import custom Google Search function
+from tools.google_search_tool import perform_google_search
 from tools.jira_tools import (
     get_jira_issue_details,
     update_jira_issue,
@@ -19,6 +19,11 @@ from tools.jira_tools import (
     show_jira_issue,
     get_jira_transitions,
     transition_jira_issue,
+)
+from tools.vector_database import ( # Import vector DB tools
+    add_requirement,
+    retrieve_similar_requirements,
+    delete_requirement,
 )
 
 # Get model name from environment variable, with a default fallback
@@ -49,17 +54,24 @@ root_agent = Agent(
         "AI assistant acting as a Product Owner helper. Manages Jira backlog items: "
         "retrieves details, updates fields (summary, description, assignee), "
         "handles comments, manages status via transitions, interactively refines "
-        "descriptions to meet standards, opens issues in browser, and uses web search for context."
+        "descriptions to meet standards, opens issues in browser, uses web search for context, "
+        "and manages requirements in a vector database."
     ),
     instruction=agent_instruction, # Load instruction from file
-    tools=[#AI! Create a new file "vector_database.py" to the tools folder, create the methods to store and retrieve requirements of a software-system in this database and make this available for the Product-Owner-agent
+    tools=[
+        # Jira Tools
         get_jira_issue_details,
         update_jira_issue,
         add_jira_comment,
         get_jira_comments,
         show_jira_issue,
-        get_jira_transitions, # Add new tool
-        transition_jira_issue, # Add new tool
-        perform_google_search, # Use the custom Google Search function
+        get_jira_transitions,
+        transition_jira_issue,
+        # Vector DB Tools
+        add_requirement,
+        retrieve_similar_requirements,
+        delete_requirement,
+        # Other Tools
+        perform_google_search,
     ],
 )

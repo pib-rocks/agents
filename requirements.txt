@@ -4,3 +4,4 @@ google-adk[eval]
 requests
 google-api-python-client # For Google Search and other Google APIs
 chromadb
+sentence-transformers # Required for default ChromaDB embeddings
