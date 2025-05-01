@@ -52,7 +52,7 @@ root_agent = Agent(
         "descriptions to meet standards, opens issues in browser, and uses web search for context."
     ),
     instruction=agent_instruction, # Load instruction from file
-    tools=[
+    tools=[#AI! Create a new file "vector_database.py" to the tools folder, create the methods to store and retrieve requirements of a software-system in this database and make this available for the Product-Owner-agent
         get_jira_issue_details,
         update_jira_issue,
         add_jira_comment,
