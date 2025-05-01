@@ -81,15 +81,16 @@ def add_requirement(requirement_id: str, requirement_text: str, metadata_json: O
         return {"status": "error", "error_message": f"Failed to add/update requirement '{requirement_id}': {e}"}
 
 
-def retrieve_similar_requirements(query_text: str, n_results: int = 3, filter_metadata: Optional[Dict] = None) -> Dict:#AI! Fix the same error for the other functions that access the vector database
+def retrieve_similar_requirements(query_text: str, n_results: int = 3, filter_metadata_json: Optional[str] = None) -> Dict:
     """
     Retrieves requirements from the vector database that are semantically similar to the query text.
 
     Args:
         query_text (str): The text to search for similar requirements (e.g., a new user story, a feature description).
         n_results (int): The maximum number of similar requirements to return. Defaults to 3.
-        filter_metadata (Optional[Dict]): Optional metadata dictionary to filter results
-                                          (e.g., {'type': 'Functional'}). Uses ChromaDB's 'where' filter format.
+        filter_metadata_json (Optional[str]): Optional JSON string representing a metadata dictionary
+                                              to filter results (e.g., '{"type": "Functional"}').
+                                              Uses ChromaDB's 'where' filter format.
 
     Returns:
         Dict: Status dictionary with results or error message. Results include IDs, text, distance, and metadata.
@@ -99,11 +100,22 @@ def retrieve_similar_requirements(query_text: str, n_results: int = 3, filter_me
     if n_results <= 0:
         return {"status": "error", "error_message": "Number of results must be positive."}
 
+    parsed_filter = None
+    if filter_metadata_json:
+        try:
+            parsed_filter = json.loads(filter_metadata_json)
+            if not isinstance(parsed_filter, dict):
+                raise ValueError("Filter metadata must be a JSON object (dictionary).")
+        except json.JSONDecodeError:
+            return {"status": "error", "error_message": "Invalid JSON format provided for filter metadata."}
+        except ValueError as ve:
+             return {"status": "error", "error_message": str(ve)}
+
     try:
         results = collection.query(
             query_texts=[query_text],
             n_results=n_results,
-            where=filter_metadata, # Pass the filter dictionary directly
+            where=parsed_filter, # Use the parsed filter dictionary
             include=['documents', 'distances', 'metadatas'] # Specify what data to return
         )
 

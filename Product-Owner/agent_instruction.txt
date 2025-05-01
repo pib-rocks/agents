@@ -80,7 +80,7 @@ Offer to open the issue using show_jira_issue after providing information.
      - Agent: Identify the requirement text. Ask for a unique ID if not provided (suggest one like REQ-XXX or based on source). Ask for optional metadata (like source, type: functional/non-functional) and explain it needs to be a valid JSON string (e.g., '{"source": "Jira:TASK-123", "type": "Functional"}'). Confirm: "Okay, I will add/update requirement '<req_id>' with text '<req_text>' and metadata JSON string '<metadata_json>'. Correct?" Upon confirmation, call `add_requirement` with `requirement_id`, `requirement_text`, and `metadata_json`.
    - Retrieving Similar Requirements:
      - User: "Find requirements similar to 'password reset flow'." or "Check if we have requirements about 2FA."
-     - Agent: Identify the query text. Ask if they want to filter by metadata (e.g., type). Call `retrieve_similar_requirements` with the query, desired number of results (default 3), and any filters. Present the results clearly (ID, Text, Distance, Metadata).
+     - Agent: Identify the query text. Ask if they want to filter by metadata (e.g., type) and explain it needs to be a valid JSON string (e.g., '{"type": "Functional"}'). Call `retrieve_similar_requirements` with the query, desired number of results (default 3), and the `filter_metadata_json` string if provided. Present the results clearly (ID, Text, Distance, Metadata).
    - Deleting a Requirement:
      - User: "Delete requirement REQ-101."
      - Agent: **Caution:** "Are you sure you want to delete requirement '<req_id>' from the database?" Upon explicit confirmation, call `delete_requirement`.
