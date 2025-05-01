@@ -45,14 +45,12 @@ def add_requirement(requirement_id: str, requirement_text: str, metadata_json: O
         requirement_id (str): A unique identifier for the requirement (e.g., 'REQ-1', 'USERSTORY-LOGIN').
         requirement_text (str): The full text of the requirement.
         metadata_json (Optional[str]): Optional JSON string representing metadata associated
-                                       with the requirement. The expected schema, based on
-                                       requirement_schema.json, includes fields like:
-                                       '{
-                                           "type": "Requirement",
-                                           "source_jira_ticket": "PR-123",
-                                           "acceptance_criteria_ids": ["AC-1", "AC-2"]
-                                       }'
-                                       However, any valid JSON object is accepted.#AI! Be much more precise to match teh description here with the json-description
+                                       with the requirement. Based on requirement_schema.json,
+                                       this JSON object should contain the following keys:
+                                       - "type" (str): Must be "Requirement".
+                                       - "source_jira_ticket" (str): The originating Jira ticket key (e.g., "PROJECT-123").
+                                       - "acceptance_criteria_ids" (List[str]): A list of IDs for associated acceptance criteria (e.g., ["AC-1", "AC-2"]).
+                                       Example: '{ "type": "Requirement", "source_jira_ticket": "PROJECT-123", "acceptance_criteria_ids": ["AC-1"] }'
 
     Returns:
         Dict: Status dictionary indicating success or error.
