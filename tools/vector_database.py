@@ -321,10 +321,12 @@ def update_acceptance_criterion(criterion_id: str, new_criterion_text: Optional[
     Args:
         criterion_id (str): The unique identifier of the criterion to update.
         new_criterion_text (Optional[str]): The new text for the criterion. If None, text is not updated.
-        new_metadata_json (Optional[str]): A JSON string representing the new metadata object.
+        new_metadata_json (Optional[str]): A JSON string representing the *complete* new metadata object.
                                            If provided, it *replaces* the existing metadata entirely.
-                                           The 'type' field should ideally remain 'AcceptanceCriterion'.
-                                           If None, metadata is not updated.#AI! Be much more precise to match the description here with the provided schema
+                                           The structure should follow acceptance_criteria_schema.json, including
+                                           keys like "type" (must be "AcceptanceCriterion"), "source_jira_ticket",
+                                           "requirement_ids", and "test_case_ids".
+                                           If None, metadata is not updated.
 
     Returns:
         Dict: Status dictionary indicating success or error.
