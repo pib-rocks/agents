@@ -42,14 +42,14 @@ def add_requirement(requirement_id: str, requirement_text: str, metadata_json: O
     """Adds or updates a software requirement in the vector database.
 
     Args:
-        requirement_id (str): A unique identifier for the requirement (e.g., 'REQ-001', 'USERSTORY-LOGIN').
+        requirement_id (str): A unique identifier for the requirement (e.g., 'REQ-1', 'USERSTORY-LOGIN').
         requirement_text (str): The full text of the requirement.
         metadata_json (Optional[str]): Optional JSON string representing metadata associated
                                        with the requirement. The expected schema, based on
                                        requirement_schema.json, includes fields like:
                                        '{
                                            "type": "Requirement",
-                                           "source_jira_ticket": "PROJECT-123",
+                                           "source_jira_ticket": "PR-123",
                                            "acceptance_criteria_ids": ["AC-1", "AC-2"]
                                        }'
                                        However, any valid JSON object is accepted.
@@ -88,7 +88,7 @@ def add_requirement(requirement_id: str, requirement_text: str, metadata_json: O
 
 
 def retrieve_similar_requirements(query_text: str, n_results: int = 3, filter_metadata_json: Optional[str] = None) -> Dict:
-    """
+    """#AI! Update this, so that it matches the new add_requirement-function
     Retrieves requirements from the vector database that are semantically similar to the query text.
 
     Args:
