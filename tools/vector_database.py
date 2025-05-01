@@ -39,14 +39,20 @@ import json # Add json import for parsing
 # --- Tool Functions ---
 
 def add_requirement(requirement_id: str, requirement_text: str, metadata_json: Optional[str] = None) -> Dict:
-    """#AI! use the input from the file requirement_schema.json to define the schema how requirements are safed
-    Adds or updates a software requirement in the vector database.
+    """Adds or updates a software requirement in the vector database.
 
     Args:
         requirement_id (str): A unique identifier for the requirement (e.g., 'REQ-001', 'USERSTORY-LOGIN').
         requirement_text (str): The full text of the requirement.
         metadata_json (Optional[str]): Optional JSON string representing metadata associated
-                                       with the requirement (e.g., '{"source": "Jira:TASK-123", "type": "Functional"}').
+                                       with the requirement. The expected schema, based on
+                                       requirement_schema.json, includes fields like:
+                                       '{
+                                           "type": "Requirement",
+                                           "source_jira_ticket": "PROJECT-123",
+                                           "acceptance_criteria_ids": ["AC-1", "AC-2"]
+                                       }'
+                                       However, any valid JSON object is accepted.
 
     Returns:
         Dict: Status dictionary indicating success or error.
