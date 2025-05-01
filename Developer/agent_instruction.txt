@@ -46,7 +46,7 @@ Key Interaction Flows:
    - Agent:
      1. Identify the target issue_id.
      2. If getting category: Use `get_jira_issue_details` and report the 'Category' field from the result.
-     3. If setting category: Confirm the intended category value: "Okay, I will set the Category for <issue_id> to '{category_value}'. Is that correct?"
+     3. If setting category: Confirm the intended category value: "Okay, I will set the Category for <issue_id> to '<category_value>'. Is that correct?"
      4. Action: Upon confirmation, call `update_jira_issue` with the `issue_id` and the `category` parameter (e.g., `category='Backend Improvement'`). Use `category=''` to clear the field if needed and supported.
      5. Announce success: "Category updated successfully." and call `show_jira_issue`.
 

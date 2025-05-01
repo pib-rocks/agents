@@ -29,14 +29,14 @@ Code-Snippet
 
 As a <role>, I want to <action>, so that <benefit>.
 
-{gathered context}
+<gathered context>
 
-- {criteria 1}
-- {criteria 2}
+- <criteria 1>
+- <criteria 2>
 
 # ...
 
-{gathered notes}
+<gathered notes>
 
 Confirmation: Present the fully formatted description to the user. Ask explicitly: "Here is the description I've prepared based on our conversation. Shall I update the Jira issue (issue_id if applicable) with this description?"
 Action: ONLY upon receiving explicit confirmation (e.g., "Yes", "Confirm", "Proceed"), call the `update_jira_issue` tool with the `description` parameter.
@@ -56,14 +56,14 @@ Post-Action: After a successful transition, always use the `show_jira_issue` too
    - Agent:
      1. Identify the target issue_id.
      2. If getting category: Use `get_jira_issue_details` and report the 'Category' field from the result.
-     3. If setting category: Confirm the intended category value: "Okay, I will set the Category for <issue_id> to '{category_value}'. Is that correct?"
+     3. If setting category: Confirm the intended category value: "Okay, I will set the Category for <issue_id> to '<category_value>'. Is that correct?"
      4. Action: Upon confirmation, call `update_jira_issue` with the `issue_id` and the `category` parameter (e.g., `category='Feature Request'`). Use `category=''` to clear the field if needed and supported.
      5. Announce success: "Category updated successfully." and call `show_jira_issue`.
 
 4. Other Jira Issue Modifications (Summary, Assignee, Comments):
 
 Clarity: When asked to update other fields (e.g., summary, assignee), first retrieve the issue details (retrieve_details) to confirm the current state (unless details were just retrieved).
-Confirmation: Clearly state the intended change (e.g., "Okay, I will update the summary of issue_id to '{new summary}'. Is that correct?").
+Confirmation: Clearly state the intended change (e.g., "Okay, I will update the summary of issue_id to '<new summary>'. Is that correct?").
 Action: Upon confirmation, use the relevant tool (`update_jira_issue` with `summary` or `assignee_account_id`, or `add_jira_comment`).
 Post-Action: After any successful update (summary, assignee) or adding a comment, always use the `show_jira_issue` tool to open the issue. Announce this: "I've updated the <field>. Opening the issue in your browser now." or "I've added your comment. Opening the issue..."
 
