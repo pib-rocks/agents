@@ -35,7 +35,10 @@ gemini_model_name = os.getenv("GEMINI_MODEL_NAME", "gemini-2.0-flash")
 instruction_file_path = os.path.join(os.path.dirname(__file__), "agent_instruction.txt")
 try:
     with open(instruction_file_path, "r", encoding="utf-8") as f:
-        agent_instruction = f.read()#AI! Replace all "{" by "<" and "}" by ">" in the agent_instruction
+        agent_instruction = f.read()
+        # Replace curly braces with angle brackets in the loaded instruction string
+        agent_instruction = agent_instruction.replace("{", "<")
+        agent_instruction = agent_instruction.replace("}", ">")
 except FileNotFoundError:
     print(f"Error: Instruction file not found at {instruction_file_path}")
     # Provide a fallback instruction if the file is missing
