@@ -1,7 +1,7 @@
 """
 Manages storing and retrieving software requirements, acceptance criteria,
-and potentially other artifacts using a ChromaDB vector database.
-"""#AI! Add CRUD-functionality to work with the testcases as defined in testcase_schema.json
+test cases, and potentially other artifacts using a ChromaDB vector database.
+"""
 import os
 import chromadb
 from chromadb.utils import embedding_functions
@@ -389,6 +389,224 @@ def update_acceptance_criterion(criterion_id: str, new_criterion_text: Optional[
         return {"status": "error", "error_message": f"Failed to update criterion '{criterion_id}': {e}"}
 
 
+# --- Test Case Functions ---
+
+def add_test_case(test_case_id: str, test_case_document: str, metadata_json: Optional[str] = None) -> Dict:
+    """Adds or updates a test case in the vector database.
+
+    Args:
+        test_case_id (str): A unique identifier for the test case (e.g., 'TC-1').
+        test_case_document (str): The primary text/description of the test case.
+                                  Corresponds to the 'document' field in testcase_schema.json.
+        metadata_json (Optional[str]): Optional JSON string representing metadata.
+                                       Expected schema based on testcase_schema.json:
+                                       '{
+                                           "type": "TestCase",
+                                           "title": "Verify successful login...",
+                                           "source_jira_ticket": "PROJECT-123",
+                                           "validates_ac_ids": ["AC-1"],
+                                           "test_steps": [...]
+                                       }'
+                                       The 'type' field is strongly recommended.
+
+    Returns:
+        Dict: Status dictionary indicating success or error.
+    """
+    if not test_case_id or not test_case_document:
+        return {"status": "error", "error_message": "Test Case ID and document text cannot be empty."}
+
+    parsed_metadata = {}
+    if metadata_json:
+        try:
+            parsed_metadata = json.loads(metadata_json)
+            if not isinstance(parsed_metadata, dict):
+                raise ValueError("Metadata must be a JSON object (dictionary).")
+            if 'type' not in parsed_metadata:
+                 print(f"Warning: Adding test case '{test_case_id}' without explicit 'type' metadata.")
+        except json.JSONDecodeError:
+            return {"status": "error", "error_message": "Invalid JSON format provided for metadata."}
+        except ValueError as ve:
+             return {"status": "error", "error_message": str(ve)}
+
+    # Enforce type for consistency
+    if 'type' not in parsed_metadata:
+        parsed_metadata['type'] = 'TestCase'
+
+    try:
+        collection.upsert(
+            ids=[test_case_id],
+            documents=[test_case_document],
+            metadatas=[parsed_metadata]
+        )
+        return {"status": "success", "report": f"Test Case '{test_case_id}' added/updated successfully."}
+    except Exception as e:
+        return {"status": "error", "error_message": f"Failed to add/update test case '{test_case_id}': {e}"}
+
+
+def retrieve_similar_test_cases(query_text: str, n_results: int = 3, filter_metadata_json: Optional[str] = None) -> Dict:
+    """Retrieves test cases semantically similar to the query text.
+
+    Args:
+        query_text (str): The text to search for similar test cases.
+        n_results (int): The maximum number of similar test cases to return. Defaults to 3.
+        filter_metadata_json (Optional[str]): Optional JSON string for metadata filtering.
+                                              It's recommended to include '{"type": "TestCase"}'
+                                              in the filter if not filtering by other specific TC metadata.
+                                              Example: '{"type": "TestCase", "source_jira_ticket": "PR-123"}'
+                                              Uses ChromaDB's 'where' filter format.
+
+    Returns:
+        Dict: Status dictionary with results or error message.
+    """
+    if not query_text:
+        return {"status": "error", "error_message": "Query text cannot be empty."}
+    if n_results <= 0:
+        return {"status": "error", "error_message": "Number of results must be positive."}
+
+    parsed_filter = None
+    if filter_metadata_json:
+        try:
+            parsed_filter = json.loads(filter_metadata_json)
+            if not isinstance(parsed_filter, dict):
+                raise ValueError("Filter metadata must be a JSON object (dictionary).")
+            if 'type' not in parsed_filter:
+                 print(f"Warning: Retrieving test cases without explicit 'type' filter. Consider adding '\"type\": \"TestCase\"' to the filter.")
+        except json.JSONDecodeError:
+            return {"status": "error", "error_message": "Invalid JSON format provided for filter metadata."}
+        except ValueError as ve:
+             return {"status": "error", "error_message": str(ve)}
+    else:
+        # Default filter to only get Test Cases if no filter is provided
+        parsed_filter = {"type": "TestCase"}
+        print("Info: No filter provided. Defaulting to retrieve only items with metadata 'type': 'TestCase'.")
+
+    try:
+        results = collection.query(
+            query_texts=[query_text],
+            n_results=n_results,
+            where=parsed_filter,
+            include=['documents', 'distances', 'metadatas']
+        )
+
+        ids = results.get('ids', [[]])[0]
+        documents = results.get('documents', [[]])[0]
+        distances = results.get('distances', [[]])[0]
+        metadatas = results.get('metadatas', [[]])[0]
+
+        if not ids:
+            if filter_metadata_json:
+                return {"status": "success", "report": f"No similar test cases found matching the filter: {filter_metadata_json}"}
+            else:
+                count = collection.count(where={"type": "TestCase"})
+                if count == 0:
+                    return {"status": "success", "report": "No test cases found in the database."}
+                else:
+                    return {"status": "success", "report": "No similar test cases found for the query."}
+
+        report_lines = [f"Found {len(ids)} similar test case(s) for query '{query_text[:50]}...':"]
+        for i in range(len(ids)):
+            report_lines.append(
+                f"  - ID: {ids[i]}, Distance: {distances[i]:.4f}\n"
+                f"    Document: {documents[i]}\n" # Changed from Text to Document for clarity
+                f"    Metadata: {metadatas[i]}"
+            )
+
+        return {"status": "success", "report": "\n".join(report_lines)}
+
+    except Exception as e:
+        return {"status": "error", "error_message": f"Failed to retrieve test cases: {e}"}
+
+
+def update_test_case(test_case_id: str, new_test_case_document: Optional[str] = None, new_metadata_json: Optional[str] = None) -> Dict:
+    """Updates the document text and/or metadata of an existing test case.
+
+    Args:
+        test_case_id (str): The unique identifier of the test case to update.
+        new_test_case_document (Optional[str]): The new document text for the test case. If None, text is not updated.
+        new_metadata_json (Optional[str]): A JSON string representing the new metadata object.
+                                           If provided, it *replaces* the existing metadata entirely.
+                                           The 'type' field should ideally remain 'TestCase'.
+                                           If None, metadata is not updated.
+
+    Returns:
+        Dict: Status dictionary indicating success or error.
+    """
+    if not test_case_id:
+        return {"status": "error", "error_message": "Test Case ID cannot be empty."}
+    if new_test_case_document is None and new_metadata_json is None:
+        return {"status": "error", "error_message": "Must provide either new document text or new metadata to update."}
+
+    # Check if the test case exists and is a TestCase
+    try:
+        existing = collection.get(ids=[test_case_id], include=['metadatas'])
+        if not existing or not existing.get('ids'):
+            return {"status": "error", "error_message": f"Test Case '{test_case_id}' not found."}
+
+        existing_metadata = existing['metadatas'][0] if existing.get('metadatas') else {}
+        if existing_metadata.get('type') != 'TestCase':
+             return {"status": "error", "error_message": f"Item '{test_case_id}' found, but it is not a Test Case (type: {existing_metadata.get('type')}). Update aborted."}
+
+    except Exception as e:
+        return {"status": "error", "error_message": f"Error checking existence of test case '{test_case_id}': {e}"}
+
+    updates_to_make = {}
+    parsed_new_metadata = None
+
+    if new_test_case_document is not None:
+        if not new_test_case_document.strip():
+             return {"status": "error", "error_message": "New test case document text cannot be empty."}
+        updates_to_make['documents'] = [new_test_case_document]
+
+    if new_metadata_json is not None:
+        try:
+            parsed_new_metadata = json.loads(new_metadata_json)
+            if not isinstance(parsed_new_metadata, dict):
+                raise ValueError("New metadata must be a JSON object (dictionary).")
+            # Ensure the type remains correct
+            if 'type' not in parsed_new_metadata:
+                 print(f"Warning: Updating metadata for '{test_case_id}' without a 'type' field. Setting to 'TestCase'.")
+                 parsed_new_metadata['type'] = 'TestCase'
+            elif parsed_new_metadata.get('type') != 'TestCase':
+                 print(f"Warning: Updating metadata for '{test_case_id}' with a type other than 'TestCase' ('{parsed_new_metadata.get('type')}').")
+
+            updates_to_make['metadatas'] = [parsed_new_metadata]
+        except json.JSONDecodeError:
+            return {"status": "error", "error_message": "Invalid JSON format provided for new metadata."}
+        except ValueError as ve:
+             return {"status": "error", "error_message": str(ve)}
+
+    if not updates_to_make:
+         return {"status": "error", "error_message": "No valid updates provided."}
+
+    try:
+        collection.update(
+            ids=[test_case_id],
+            **updates_to_make
+        )
+        update_fields = []
+        if 'documents' in updates_to_make: update_fields.append("document")
+        if 'metadatas' in updates_to_make: update_fields.append("metadata")
+        return {"status": "success", "report": f"Test Case '{test_case_id}' updated successfully ({', '.join(update_fields)})."}
+    except Exception as e:
+        return {"status": "error", "error_message": f"Failed to update test case '{test_case_id}': {e}"}
+
+
+def delete_test_case(test_case_id: str) -> Dict:
+    """Deletes a test case from the vector database by its ID."""
+    if not test_case_id:
+        return {"status": "error", "error_message": "Test Case ID cannot be empty."}
+    try:
+        # Optional: Verify it's a TC before deleting?
+        # item = collection.get(ids=[test_case_id], include=['metadatas'])
+        # if not item or item['metadatas'][0].get('type') != 'TestCase':
+        #     return {"status": "error", "error_message": f"Item '{test_case_id}' not found or is not a Test Case."}
+
+        collection.delete(ids=[test_case_id])
+        return {"status": "success", "report": f"Test Case '{test_case_id}' deleted successfully."}
+    except Exception as e:
+        return {"status": "error", "error_message": f"Failed to delete test case '{test_case_id}': {e}"}
+
+
 # Export public functions
 __all__ = [
     'add_requirement',
@@ -397,5 +615,9 @@ __all__ = [
     'add_acceptance_criterion',
     'retrieve_similar_acceptance_criteria',
     'delete_acceptance_criterion',
-    'update_acceptance_criterion'
+    'update_acceptance_criterion',
+    'add_test_case',
+    'retrieve_similar_test_cases',
+    'update_test_case',
+    'delete_test_case'
 ]
