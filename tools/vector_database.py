@@ -454,11 +454,15 @@ def retrieve_similar_test_cases(query_text: str, n_results: int = 3, filter_meta
     Args:
         query_text (str): The text to search for similar test cases.
         n_results (int): The maximum number of similar test cases to return. Defaults to 3.
-        filter_metadata_json (Optional[str]): Optional JSON string for metadata filtering.
+        filter_metadata_json (Optional[str]): Optional JSON string for metadata filtering based on the
+                                              fields defined in testcase_schema.json
+                                              (e.g., "type", "title", "source_jira_ticket", "validates_ac_ids").
+                                              Note: Filtering on nested fields like "test_steps" might require specific ChromaDB syntax or might not be directly supported.
                                               It's recommended to include '{"type": "TestCase"}'
-                                              in the filter if not filtering by other specific TC metadata.
-                                              Example: '{"type": "TestCase", "source_jira_ticket": "PR-123"}'
-                                              Uses ChromaDB's 'where' filter format.#AI! Be much more precise to match the description here with the provided schema
+                                              in the filter unless filtering by other specific TC metadata.
+                                              Example: To find TCs for a specific ticket:
+                                              '{"type": "TestCase", "source_jira_ticket": "PROJECT-123"}'
+                                              Uses ChromaDB's 'where' filter format (see ChromaDB docs for operators like $in, $eq, etc.).
 
     Returns:
         Dict: Status dictionary with results or error message.
