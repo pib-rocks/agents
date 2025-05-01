@@ -41,7 +41,7 @@ def add_requirement(requirement_id: str, requirement_text: str, metadata_json: O
     """Adds or updates a software requirement in the vector database.
 
     Args:
-        requirement_id (str): A unique identifier for the requirement (e.g., 'REQ-1', 'USERSTORY-LOGIN').
+        requirement_id (str): A unique identifier for the requirement. Requirement-IDs must consist of the prefix 'REQ-' and their ongoing number (e.g., 'REQ-1', 'REQ-2').
         requirement_text (str): The full text of the requirement.
         metadata_json (Optional[str]): Optional JSON string representing metadata associated
                                        with the requirement. Based on requirement_schema.json,
@@ -146,9 +146,9 @@ def retrieve_similar_requirements(query_text: str, n_results: int = 3, filter_me
     except Exception as e:
         return {"status": "error", "error_message": f"Failed to retrieve requirements: {e}"}
 
-
+#AI! Calling "update_requirement" with a list of ACs in the metadata resulted in the following error_message: "Failed to update requirement 'REQ-1': Expected metadata value to be a str, int, float or bool, got ['AC-1'] which is a list in update." Enable to set a list of ACs in this method.
 def update_requirement(requirement_id: str, new_requirement_text: Optional[str] = None, new_metadata_json: Optional[str] = None) -> Dict:
-    """Updates the text and/or metadata of an existing requirement.
+    """Updates the text and/or metadata of an existing requirement in the vector database.
 
     Args:
         requirement_id (str): The unique identifier of the requirement to update.
@@ -224,7 +224,7 @@ def update_requirement(requirement_id: str, new_requirement_text: Optional[str] 
 
 
 def modify_requirement_acceptance_criteria(requirement_id: str, add_criteria_ids: Optional[List[str]] = None, remove_criteria_ids: Optional[List[str]] = None) -> Dict:
-    """Adds or removes acceptance criteria IDs from a specific requirement's metadata.
+    """Adds or removes acceptance criteria IDs from a specific requirement's metadata in the vector database. 
 
     Args:
         requirement_id (str): The ID of the requirement to modify.
@@ -306,7 +306,7 @@ def add_acceptance_criterion(criterion_id: str, criterion_text: str, metadata_js
     """Adds or updates an acceptance criterion in the vector database.
 
     Args:
-        criterion_id (str): A unique identifier for the criterion (e.g., 'AC-1').
+        criterion_id (str): A unique identifier for the criterion. Acceptance-criteria-IDs must consist of the prefix 'AC-' and their ongoing number (e.g. 'AC-1').
         criterion_text (str): The full text of the acceptance criterion.
         metadata_json (Optional[str]): Optional JSON string representing metadata associated
                                        with the acceptance criterion. Based on acceptance_criteria_schema.json,
@@ -354,7 +354,7 @@ def add_acceptance_criterion(criterion_id: str, criterion_text: str, metadata_js
 
 
 def retrieve_similar_acceptance_criteria(query_text: str, n_results: int = 3, filter_metadata_json: Optional[str] = None) -> Dict:
-    """Retrieves acceptance criteria semantically similar to the query text.
+    """Retrieves from the vector database acceptance criteria semantically similar to the query text.
 
     Args:
         query_text (str): The text to search for similar criteria.
@@ -454,7 +454,7 @@ def delete_acceptance_criterion(criterion_id: str) -> Dict:
 
 
 def update_acceptance_criterion(criterion_id: str, new_criterion_text: Optional[str] = None, new_metadata_json: Optional[str] = None) -> Dict:
-    """Updates the text and/or metadata of an existing acceptance criterion.
+    """Updates the text and/or metadata of an existing acceptance criterion in the vector database.
 
     Args:
         criterion_id (str): The unique identifier of the criterion to update.
@@ -537,7 +537,7 @@ def add_test_case(test_case_id: str, test_case_document: str, metadata_json: Opt
     """Adds or updates a test case in the vector database.
 
     Args:
-        test_case_id (str): A unique identifier for the test case (e.g., 'TC-1').
+        test_case_id (str): A unique identifier for the test case. Testcase-IDs must consist of the prefix 'TC-' and their ongoing number (e.g., 'TC-1').
         test_case_document (str): The primary text/description of the test case.
                                   Corresponds to the 'document' field in testcase_schema.json.
         metadata_json (Optional[str]): Optional JSON string representing metadata associated
@@ -587,7 +587,7 @@ def add_test_case(test_case_id: str, test_case_document: str, metadata_json: Opt
 
 
 def retrieve_similar_test_cases(query_text: str, n_results: int = 3, filter_metadata_json: Optional[str] = None) -> Dict:
-    """Retrieves test cases semantically similar to the query text.
+    """Retrieves test cases from the vector database semantically similar to the query text.
 
     Args:
         query_text (str): The text to search for similar test cases.
@@ -665,7 +665,7 @@ def retrieve_similar_test_cases(query_text: str, n_results: int = 3, filter_meta
 
 
 def update_test_case(test_case_id: str, new_test_case_document: Optional[str] = None, new_metadata_json: Optional[str] = None) -> Dict:
-    """Updates the document text and/or metadata of an existing test case.
+    """Updates the document text and/or metadata of an existing test case in the vector database.
 
     Args:
         test_case_id (str): The unique identifier of the test case to update.
