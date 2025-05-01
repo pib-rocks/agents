@@ -34,17 +34,19 @@ collection = client.get_or_create_collection(
     # metadata={"hnsw:space": "cosine"} # Optional: Specify distance metric if needed
 )
 
+import json # Add json import for parsing
+
 # --- Tool Functions ---
 
-def add_requirement(requirement_id: str, requirement_text: str, metadata: Optional[Dict] = None) -> Dict:#AI! Using this function as tool for a LLM resulted in this error: Failed to parse the parameter item: Dict of function add_requirement for automatic function calling. Automatic function calling works best with simpler function signature schema,consider manually parse your function declaration for function add_requirement. Fix it!
+def add_requirement(requirement_id: str, requirement_text: str, metadata_json: Optional[str] = None) -> Dict:
     """
     Adds or updates a software requirement in the vector database.
 
     Args:
         requirement_id (str): A unique identifier for the requirement (e.g., 'REQ-001', 'USERSTORY-LOGIN').
         requirement_text (str): The full text of the requirement.
-        metadata (Optional[Dict]): Optional metadata associated with the requirement
-                                   (e.g., {'source': 'Jira:TASK-123', 'type': 'Functional'}).
+        metadata_json (Optional[str]): Optional JSON string representing metadata associated
+                                       with the requirement (e.g., '{"source": "Jira:TASK-123", "type": "Functional"}').
 
     Returns:
         Dict: Status dictionary indicating success or error.
@@ -52,18 +54,26 @@ def add_requirement(requirement_id: str, requirement_text: str, metadata: Option
     if not requirement_id or not requirement_text:
         return {"status": "error", "error_message": "Requirement ID and text cannot be empty."}
 
-    # Ensure metadata is a dictionary if None
-    if metadata is None:
-        metadata = {}
+    parsed_metadata = {}
+    if metadata_json:
+        try:
+            parsed_metadata = json.loads(metadata_json)
+            if not isinstance(parsed_metadata, dict):
+                raise ValueError("Metadata must be a JSON object (dictionary).")
+        except json.JSONDecodeError:
+            return {"status": "error", "error_message": "Invalid JSON format provided for metadata."}
+        except ValueError as ve:
+             return {"status": "error", "error_message": str(ve)}
+
     # You might want to add standard metadata fields automatically, e.g., timestamp
-    # metadata['last_updated'] = datetime.datetime.utcnow().isoformat()
+    # parsed_metadata['last_updated'] = datetime.datetime.utcnow().isoformat()
 
     try:
         # Use upsert to add or update based on ID
         collection.upsert(
             ids=[requirement_id],
             documents=[requirement_text],
-            metadatas=[metadata] # Chroma expects a list for each argument
+            metadatas=[parsed_metadata] # Chroma expects a list for each argument
         )
         return {"status": "success", "report": f"Requirement '{requirement_id}' added/updated successfully."}
     except Exception as e:

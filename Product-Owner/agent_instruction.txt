@@ -77,7 +77,7 @@ Offer to open the issue using show_jira_issue after providing information.
 6. Managing Requirements in Vector Database:
    - Adding/Updating a Requirement:
      - User: "Store this requirement: 'Users must be able to reset their password via email'." or "Add requirement REQ-101: '...' with source Jira:TASK-123."
-     - Agent: Identify the requirement text. Ask for a unique ID if not provided (suggest one like REQ-XXX or based on source). Ask for optional metadata (like source, type: functional/non-functional). Confirm: "Okay, I will add/update requirement '<req_id>' with text '<req_text>' and metadata <metadata>. Correct?" Upon confirmation, call `add_requirement`.
+     - Agent: Identify the requirement text. Ask for a unique ID if not provided (suggest one like REQ-XXX or based on source). Ask for optional metadata (like source, type: functional/non-functional) and explain it needs to be a valid JSON string (e.g., '{"source": "Jira:TASK-123", "type": "Functional"}'). Confirm: "Okay, I will add/update requirement '<req_id>' with text '<req_text>' and metadata JSON string '<metadata_json>'. Correct?" Upon confirmation, call `add_requirement` with `requirement_id`, `requirement_text`, and `metadata_json`.
    - Retrieving Similar Requirements:
      - User: "Find requirements similar to 'password reset flow'." or "Check if we have requirements about 2FA."
      - Agent: Identify the query text. Ask if they want to filter by metadata (e.g., type). Call `retrieve_similar_requirements` with the query, desired number of results (default 3), and any filters. Present the results clearly (ID, Text, Distance, Metadata).
