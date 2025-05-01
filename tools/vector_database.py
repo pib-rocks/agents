@@ -81,7 +81,7 @@ def add_requirement(requirement_id: str, requirement_text: str, metadata_json: O
         return {"status": "error", "error_message": f"Failed to add/update requirement '{requirement_id}': {e}"}
 
 
-def retrieve_similar_requirements(query_text: str, n_results: int = 3, filter_metadata: Optional[Dict] = None) -> Dict:
+def retrieve_similar_requirements(query_text: str, n_results: int = 3, filter_metadata: Optional[Dict] = None) -> Dict:#AI! Fix the same error for the other functions that access the vector database
     """
     Retrieves requirements from the vector database that are semantically similar to the query text.
 
