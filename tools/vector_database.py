@@ -1,7 +1,7 @@
 """
 Manages storing and retrieving software requirements using a ChromaDB vector database.
 """
-
+#AI! Add functions to add acceptance-criteria as specified in the acceptance_criteria.json to the database
 import os
 import chromadb
 from chromadb.utils import embedding_functions
