@@ -1,7 +1,7 @@
 """
 Manages storing and retrieving software requirements, acceptance criteria,
 and potentially other artifacts using a ChromaDB vector database.
-"""
+"""#AI! Add a function to update an acceptance-criterium
 import os
 import chromadb
 from chromadb.utils import embedding_functions
