@@ -10,7 +10,7 @@ from typing import List, Dict, Optional
 # --- Configuration ---
 # Use environment variables or defaults
 PERSIST_DIRECTORY = os.getenv("VECTOR_DB_PATH", "./chroma_db")
-COLLECTION_NAME = os.getenv("VECTOR_DB_COLLECTION", "software_requirements")
+COLLECTION_NAME = os.getenv("VECTOR_DB_COLLECTION", "cerebra_requirements")
 # Using default embedding function (requires sentence-transformers)
 # For production, consider specifying a model explicitly or using a different provider.
 # ef = embedding_functions.SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
@@ -39,7 +39,7 @@ import json # Add json import for parsing
 # --- Tool Functions ---
 
 def add_requirement(requirement_id: str, requirement_text: str, metadata_json: Optional[str] = None) -> Dict:
-    """
+    """#AI! use the input from the file requirement_schema.json to define the schema how requirements are safed
     Adds or updates a software requirement in the vector database.
 
     Args:
