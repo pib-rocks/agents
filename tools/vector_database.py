@@ -1,7 +1,7 @@
 """
 Manages storing and retrieving software requirements, acceptance criteria,
 and potentially other artifacts using a ChromaDB vector database.
-"""
+"""#AI! Add CRUD-functionality to work with the testcases as defined in testcase_schema.json
 import os
 import chromadb
 from chromadb.utils import embedding_functions
