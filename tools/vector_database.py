@@ -36,8 +36,7 @@ collection = client.get_or_create_collection(
 
 import json # Add json import for parsing
 
-# --- Tool Functions ---
-#AI! Add the functionality to update existing requirements, especially to add/delete acceptance criteria to/from the existing metadata
+# --- Requirement Functions ---
 def add_requirement(requirement_id: str, requirement_text: str, metadata_json: Optional[str] = None) -> Dict:
     """Adds or updates a software requirement in the vector database.
 
@@ -148,7 +147,146 @@ def retrieve_similar_requirements(query_text: str, n_results: int = 3, filter_me
         return {"status": "error", "error_message": f"Failed to retrieve requirements: {e}"}
 
 
-# --- Optional: Add delete/get by ID if needed ---
+def update_requirement(requirement_id: str, new_requirement_text: Optional[str] = None, new_metadata_json: Optional[str] = None) -> Dict:
+    """Updates the text and/or metadata of an existing requirement.
+
+    Args:
+        requirement_id (str): The unique identifier of the requirement to update.
+        new_requirement_text (Optional[str]): The new text for the requirement. If None, text is not updated.
+        new_metadata_json (Optional[str]): A JSON string representing the *complete* new metadata object.
+                                           If provided, it *replaces* the existing metadata entirely.
+                                           The structure should follow requirement_schema.json, including
+                                           keys like "type" (must be "Requirement"), "source_jira_ticket",
+                                           and "acceptance_criteria_ids".
+                                           If None, metadata is not updated.
+
+    Returns:
+        Dict: Status dictionary indicating success or error.
+    """
+    if not requirement_id:
+        return {"status": "error", "error_message": "Requirement ID cannot be empty."}
+    if new_requirement_text is None and new_metadata_json is None:
+        return {"status": "error", "error_message": "Must provide either new text or new metadata to update."}
+
+    # Check if the requirement exists and is a Requirement
+    try:
+        existing = collection.get(ids=[requirement_id], include=['metadatas'])
+        if not existing or not existing.get('ids'):
+            return {"status": "error", "error_message": f"Requirement '{requirement_id}' not found."}
+
+        existing_metadata = existing['metadatas'][0] if existing.get('metadatas') else {}
+        if existing_metadata.get('type') != 'Requirement':
+             return {"status": "error", "error_message": f"Item '{requirement_id}' found, but it is not a Requirement (type: {existing_metadata.get('type')}). Update aborted."}
+
+    except Exception as e:
+        return {"status": "error", "error_message": f"Error checking existence of requirement '{requirement_id}': {e}"}
+
+    updates_to_make = {}
+    parsed_new_metadata = None
+
+    if new_requirement_text is not None:
+        if not new_requirement_text.strip():
+             return {"status": "error", "error_message": "New requirement text cannot be empty."}
+        updates_to_make['documents'] = [new_requirement_text]
+
+    if new_metadata_json is not None:
+        try:
+            parsed_new_metadata = json.loads(new_metadata_json)
+            if not isinstance(parsed_new_metadata, dict):
+                raise ValueError("New metadata must be a JSON object (dictionary).")
+            # Ensure the type remains correct
+            if 'type' not in parsed_new_metadata:
+                 print(f"Warning: Updating metadata for '{requirement_id}' without a 'type' field. Setting to 'Requirement'.")
+                 parsed_new_metadata['type'] = 'Requirement'
+            elif parsed_new_metadata.get('type') != 'Requirement':
+                 print(f"Warning: Updating metadata for '{requirement_id}' with a type other than 'Requirement' ('{parsed_new_metadata.get('type')}').")
+
+            updates_to_make['metadatas'] = [parsed_new_metadata]
+        except json.JSONDecodeError:
+            return {"status": "error", "error_message": "Invalid JSON format provided for new metadata."}
+        except ValueError as ve:
+             return {"status": "error", "error_message": str(ve)}
+
+    if not updates_to_make:
+         return {"status": "error", "error_message": "No valid updates provided."}
+
+    try:
+        collection.update(
+            ids=[requirement_id],
+            **updates_to_make
+        )
+        update_fields = []
+        if 'documents' in updates_to_make: update_fields.append("text")
+        if 'metadatas' in updates_to_make: update_fields.append("metadata")
+        return {"status": "success", "report": f"Requirement '{requirement_id}' updated successfully ({', '.join(update_fields)})."}
+    except Exception as e:
+        return {"status": "error", "error_message": f"Failed to update requirement '{requirement_id}': {e}"}
+
+
+def modify_requirement_acceptance_criteria(requirement_id: str, add_criteria_ids: Optional[List[str]] = None, remove_criteria_ids: Optional[List[str]] = None) -> Dict:
+    """Adds or removes acceptance criteria IDs from a specific requirement's metadata.
+
+    Args:
+        requirement_id (str): The ID of the requirement to modify.
+        add_criteria_ids (Optional[List[str]]): A list of AC IDs to add. Duplicates are ignored.
+        remove_criteria_ids (Optional[List[str]]): A list of AC IDs to remove. Non-existent IDs are ignored.
+
+    Returns:
+        Dict: Status dictionary indicating success or error.
+    """
+    if not requirement_id:
+        return {"status": "error", "error_message": "Requirement ID cannot be empty."}
+    if not add_criteria_ids and not remove_criteria_ids:
+        return {"status": "success", "report": "No acceptance criteria IDs provided to add or remove."}
+
+    add_criteria_ids = add_criteria_ids or []
+    remove_criteria_ids = remove_criteria_ids or []
+
+    # 1. Get the current requirement metadata
+    try:
+        existing = collection.get(ids=[requirement_id], include=['metadatas'])
+        if not existing or not existing.get('ids'):
+            return {"status": "error", "error_message": f"Requirement '{requirement_id}' not found."}
+
+        current_metadata = existing['metadatas'][0] if existing.get('metadatas') else {}
+        if current_metadata.get('type') != 'Requirement':
+             return {"status": "error", "error_message": f"Item '{requirement_id}' found, but it is not a Requirement (type: {current_metadata.get('type')}). Modification aborted."}
+
+    except Exception as e:
+        return {"status": "error", "error_message": f"Error retrieving requirement '{requirement_id}': {e}"}
+
+    # 2. Modify the acceptance_criteria_ids list
+    current_ac_ids = set(current_metadata.get('acceptance_criteria_ids', []))
+    original_count = len(current_ac_ids)
+
+    # Add new unique IDs
+    for ac_id in add_criteria_ids:
+        if ac_id: # Ignore empty strings
+            current_ac_ids.add(ac_id)
+
+    # Remove specified IDs
+    for ac_id in remove_criteria_ids:
+        current_ac_ids.discard(ac_id) # Use discard to avoid error if ID not present
+
+    # 3. Update the metadata if changes occurred
+    if len(current_ac_ids) != original_count or add_criteria_ids or remove_criteria_ids: # Check if actual changes happened
+        new_metadata = current_metadata.copy()
+        new_metadata['acceptance_criteria_ids'] = sorted(list(current_ac_ids)) # Store as sorted list
+
+        try:
+            collection.update(
+                ids=[requirement_id],
+                metadatas=[new_metadata]
+            )
+            added_count = len(current_ac_ids - set(current_metadata.get('acceptance_criteria_ids', [])))
+            removed_count = len(set(current_metadata.get('acceptance_criteria_ids', [])) - current_ac_ids)
+            return {"status": "success", "report": f"Requirement '{requirement_id}' acceptance criteria updated. Added: {added_count}, Removed: {removed_count}. New list: {new_metadata['acceptance_criteria_ids']}"}
+        except Exception as e:
+            return {"status": "error", "error_message": f"Failed to update metadata for requirement '{requirement_id}': {e}"}
+    else:
+        return {"status": "success", "report": f"No changes made to acceptance criteria for requirement '{requirement_id}'. Current list: {sorted(list(current_ac_ids))}"}
+
+
 def delete_requirement(requirement_id: str) -> Dict:
     """Deletes a requirement from the vector database by its ID."""
     if not requirement_id:
@@ -620,9 +758,13 @@ def delete_test_case(test_case_id: str) -> Dict:
 
 # Export public functions
 __all__ = [
+    # Requirement Functions
     'add_requirement',
     'retrieve_similar_requirements',
+    'update_requirement',
+    'modify_requirement_acceptance_criteria',
     'delete_requirement',
+    # Acceptance Criteria Functions
     'add_acceptance_criterion',
     'retrieve_similar_acceptance_criteria',
     'delete_acceptance_criterion',
