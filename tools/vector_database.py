@@ -37,7 +37,7 @@ collection = client.get_or_create_collection(
 import json # Add json import for parsing
 
 # --- Tool Functions ---
-
+#AI! Add the functionality to update existing requirements, especially to add/delete acceptance criteria to/from the existing metadata
 def add_requirement(requirement_id: str, requirement_text: str, metadata_json: Optional[str] = None) -> Dict:
     """Adds or updates a software requirement in the vector database.
 
