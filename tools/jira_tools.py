@@ -6,9 +6,10 @@ from datetime import datetime
 import pytz # For timezone handling
 import webbrowser # Import the webbrowser module
 # Note: 're' import removed previously
-#AI! The Jira-instance for this project uses a custom field in its tickets to specify the category of the issue. The field is represented by as a radio-group, so only one value can be selected. The ID of this custom field is 10035. Make it possible to set and get this category of issues.
+
 # --- Constants ---
 SUBTASK_ISSUE_TYPE_ID = "10003" # Hardcoded Sub-task Issue Type ID
+CUSTOM_FIELD_CATEGORY_ID = "customfield_10035" # ID for the Category custom field
 # Renamed constant for broader applicability
 ALLOWED_COMPONENTS = ["cerebra", "pib-backend", "pib-blockly"]
 
@@ -265,9 +266,10 @@ def update_jira_issue(
     summary: Optional[str] = None,
     description: Optional[str] = None,
     assignee_account_id: Optional[str] = None,
-    components: Optional[List[str]] = None # Added components parameter
+    components: Optional[List[str]] = None,
+    category: Optional[str] = None # Added category parameter
 ) -> dict:
-    """Updates fields (summary, description, assignee, components) for a specified Jira issue.
+    """Updates fields (summary, description, assignee, components, category) for a specified Jira issue.
 
     Requires JIRA_INSTANCE_URL, JIRA_EMAIL, and JIRA_API_KEY environment
     variables to be set.
@@ -283,6 +285,8 @@ def update_jira_issue(
         components (Optional[List[str]]): A list of component names to set.
             Must be from the allowed list: ['cerebra', 'pib-backend', 'pib-blockly'].
             Provide an empty list `[]` to clear components. Optional.
+        category (Optional[str]): The value to set for the Category custom field
+            (customfield_10035). Optional.
 
     Returns:
         dict: status and result message or error message.
@@ -301,11 +305,10 @@ def update_jira_issue(
         }
 
     # Check if at least one field is provided for update
-    # Note: components=[] is a valid update (to clear), so check components is not None
-    if not any([summary, description, assignee_account_id is not None, components is not None]):
+    if not any([summary, description, assignee_account_id is not None, components is not None, category is not None]):
          return {
             "status": "error",
-            "error_message": "No fields provided to update (summary, description, assignee, or components).",
+            "error_message": "No fields provided to update (summary, description, assignee, components, or category).",
         }
 
     api_url = f"{jira_url.rstrip('/')}/rest/api/3/issue/{issue_id}"
@@ -347,6 +350,15 @@ def update_jira_issue(
         else:
             # Set components to empty list to clear them
             payload_fields["components"] = []
+    # Handle category update (assuming value is provided directly)
+    if category is not None:
+         # For select list (single choice) custom fields, the format is usually {"value": "Option Name"}
+         # If category is an empty string, we might want to clear the field (set to None or omit)
+         if category:
+             payload_fields[CUSTOM_FIELD_CATEGORY_ID] = {"value": category}
+         else:
+             # To clear a single-select custom field, set it to null
+             payload_fields[CUSTOM_FIELD_CATEGORY_ID] = None
 
 
     payload = {"fields": payload_fields}
@@ -740,7 +752,9 @@ def get_jira_issue_details(issue_id: str) -> dict:
             ),
         }
 
-    api_url = f"{jira_url.rstrip('/')}/rest/api/3/issue/{issue_id}"
+    # Request the category custom field along with standard fields
+    fields_to_request = f"summary,status,assignee,description,{CUSTOM_FIELD_CATEGORY_ID}"
+    api_url = f"{jira_url.rstrip('/')}/rest/api/3/issue/{issue_id}?fields={fields_to_request}"
     auth = (jira_email, jira_api_key)
     headers = {"Accept": "application/json"}
 
@@ -756,6 +770,9 @@ def get_jira_issue_details(issue_id: str) -> dict:
         status = fields.get("status", {}).get("name", "N/A")
         assignee_data = fields.get("assignee")
         assignee = assignee_data.get("displayName", "Unassigned") if assignee_data else "Unassigned"
+        # Extract category - it's often an object with a 'value' field for single-select lists
+        category_data = fields.get(CUSTOM_FIELD_CATEGORY_ID)
+        category = category_data.get("value", "N/A") if isinstance(category_data, dict) else "N/A"
         description_data = fields.get('description')
         description_text = "No description provided."
         if description_data:
@@ -783,6 +800,7 @@ def get_jira_issue_details(issue_id: str) -> dict:
             f"  Summary: {summary}\n"
             f"  Status: {status}\n"
             f"  Assignee: {assignee}\n"
+            f"  Category: {category}\n" # Added Category to report
             f"  Description: {description_text}"
         )
         return {"status": "success", "report": report}
