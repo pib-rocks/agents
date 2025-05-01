@@ -88,14 +88,14 @@ def add_requirement(requirement_id: str, requirement_text: str, metadata_json: O
 
 
 def retrieve_similar_requirements(query_text: str, n_results: int = 3, filter_metadata_json: Optional[str] = None) -> Dict:
-    """#AI! Update this, so that it matches the new add_requirement-function
-    Retrieves requirements from the vector database that are semantically similar to the query text.
+    """Retrieves requirements from the vector database that are semantically similar to the query text.
 
     Args:
         query_text (str): The text to search for similar requirements (e.g., a new user story, a feature description).
         n_results (int): The maximum number of similar requirements to return. Defaults to 3.
         filter_metadata_json (Optional[str]): Optional JSON string representing a metadata dictionary
-                                              to filter results (e.g., '{"type": "Functional"}').
+                                              to filter results based on the stored metadata.
+                                              Example: '{"type": "Requirement", "source_jira_ticket": "PR-123"}'
                                               Uses ChromaDB's 'where' filter format.
 
     Returns:
