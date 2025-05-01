@@ -236,70 +236,6 @@ def update_requirement(requirement_id: str, new_requirement_text: Optional[str] 
         # Catch potential ChromaDB errors or other issues during upsert
         return {"status": "error", "error_message": f"Failed to upsert requirement '{requirement_id}': {e}"}
 
-#AI! Remove the method "modify_requirement_acceptance_criteria" from here and all references in other modules
-def modify_requirement_acceptance_criteria(requirement_id: str, add_criteria_ids: Optional[List[str]] = None, remove_criteria_ids: Optional[List[str]] = None) -> Dict:
-    """Adds or removes acceptance criteria IDs from a specific requirement's metadata in the vector database. 
-
-    Args:
-        requirement_id (str): The ID of the requirement to modify.
-        add_criteria_ids (Optional[List[str]]): A list of AC IDs to add. Duplicates are ignored.
-        remove_criteria_ids (Optional[List[str]]): A list of AC IDs to remove. Non-existent IDs are ignored.
-
-    Returns:
-        Dict: Status dictionary indicating success or error.
-    """
-    if not requirement_id:
-        return {"status": "error", "error_message": "Requirement ID cannot be empty."}
-    if not add_criteria_ids and not remove_criteria_ids:
-        return {"status": "success", "report": "No acceptance criteria IDs provided to add or remove."}
-
-    add_criteria_ids = add_criteria_ids or []
-    remove_criteria_ids = remove_criteria_ids or []
-
-    # 1. Get the current requirement metadata
-    try:
-        existing = collection.get(ids=[requirement_id], include=['metadatas'])
-        if not existing or not existing.get('ids'):
-            return {"status": "error", "error_message": f"Requirement '{requirement_id}' not found."}
-
-        current_metadata = existing['metadatas'][0] if existing.get('metadatas') else {}
-        if current_metadata.get('type') != 'Requirement':
-             return {"status": "error", "error_message": f"Item '{requirement_id}' found, but it is not a Requirement (type: {current_metadata.get('type')}). Modification aborted."}
-
-    except Exception as e:
-        return {"status": "error", "error_message": f"Error retrieving requirement '{requirement_id}': {e}"}
-
-    # 2. Modify the acceptance_criteria_ids list
-    current_ac_ids = set(current_metadata.get('acceptance_criteria_ids', []))
-    original_count = len(current_ac_ids)
-
-    # Add new unique IDs
-    for ac_id in add_criteria_ids:
-        if ac_id: # Ignore empty strings
-            current_ac_ids.add(ac_id)
-
-    # Remove specified IDs
-    for ac_id in remove_criteria_ids:
-        current_ac_ids.discard(ac_id) # Use discard to avoid error if ID not present
-
-    # 3. Update the metadata if changes occurred
-    if len(current_ac_ids) != original_count or add_criteria_ids or remove_criteria_ids: # Check if actual changes happened
-        new_metadata = current_metadata.copy()
-        new_metadata['acceptance_criteria_ids'] = sorted(list(current_ac_ids)) # Store as sorted list
-
-        try:
-            collection.update(
-                ids=[requirement_id],
-                metadatas=[new_metadata]
-            )
-            added_count = len(current_ac_ids - set(current_metadata.get('acceptance_criteria_ids', [])))
-            removed_count = len(set(current_metadata.get('acceptance_criteria_ids', [])) - current_ac_ids)
-            return {"status": "success", "report": f"Requirement '{requirement_id}' acceptance criteria updated. Added: {added_count}, Removed: {removed_count}. New list: {new_metadata['acceptance_criteria_ids']}"}
-        except Exception as e:
-            return {"status": "error", "error_message": f"Failed to update metadata for requirement '{requirement_id}': {e}"}
-    else:
-        return {"status": "success", "report": f"No changes made to acceptance criteria for requirement '{requirement_id}'. Current list: {sorted(list(current_ac_ids))}"}
-
 
 def delete_requirement(requirement_id: str) -> Dict:
     """Deletes a requirement from the vector database by its ID."""
@@ -776,7 +712,6 @@ __all__ = [
     'add_requirement',
     'retrieve_similar_requirements',
     'update_requirement',
-    'modify_requirement_acceptance_criteria',
     'delete_requirement',
     # Acceptance Criteria Functions
     'add_acceptance_criterion',
