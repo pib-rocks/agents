@@ -402,16 +402,17 @@ def add_test_case(test_case_id: str, test_case_document: str, metadata_json: Opt
         test_case_id (str): A unique identifier for the test case (e.g., 'TC-1').
         test_case_document (str): The primary text/description of the test case.
                                   Corresponds to the 'document' field in testcase_schema.json.
-        metadata_json (Optional[str]): Optional JSON string representing metadata.
-                                       Expected schema based on testcase_schema.json:
-                                       '{
-                                           "type": "TestCase",
-                                           "title": "Verify successful login...",
-                                           "source_jira_ticket": "PROJECT-123",
-                                           "validates_ac_ids": ["AC-1"],
-                                           "test_steps": [...]#AI! Be much more precise to match the description here with the provided schema
-                                       }'
-                                       The 'type' field is strongly recommended.
+        metadata_json (Optional[str]): Optional JSON string representing metadata associated
+                                       with the test case. Based on testcase_schema.json,
+                                       this JSON object should contain the following keys:
+                                       - "type" (str): Must be "TestCase".
+                                       - "title" (str): A descriptive title for the test case.
+                                       - "source_jira_ticket" (str): The originating Jira ticket key (e.g., "PROJECT-123").
+                                       - "validates_ac_ids" (List[str]): A list of IDs for acceptance criteria this test case validates (e.g., ["AC-1"]).
+                                       - "test_steps" (List[Dict]): A list of test step objects, where each object has:
+                                           - "step_description" (str): Description of the step.
+                                           - "is_automatable" (bool): Whether the step can be automated.
+                                       Example: '{ "type": "TestCase", "title": "...", "source_jira_ticket": "...", "validates_ac_ids": ["AC-1"], "test_steps": [{"step_description": "...", "is_automatable": true}] }'
 
     Returns:
         Dict: Status dictionary indicating success or error.
