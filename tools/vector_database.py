@@ -94,7 +94,7 @@ def retrieve_similar_requirements(query_text: str, n_results: int = 3, filter_me
         filter_metadata_json (Optional[str]): Optional JSON string representing a metadata dictionary
                                               to filter results based on the stored metadata.
                                               Example: '{"type": "Requirement", "source_jira_ticket": "PR-123"}'
-                                              Uses ChromaDB's 'where' filter format.
+                                              Uses ChromaDB's 'where' filter format.#AI! Be much more precise to match the description here with the provided schema
 
     Returns:
         Dict: Status dictionary with results or error message. Results include IDs, text, distance, and metadata.
