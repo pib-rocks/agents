@@ -25,7 +25,6 @@ from tools.vector_database import ( # Import vector DB tools
     retrieve_similar_requirements,
     delete_requirement,
     update_requirement,
-    modify_requirement_acceptance_criteria,
     delete_requirement,
     add_acceptance_criterion,
     retrieve_similar_acceptance_criteria,
