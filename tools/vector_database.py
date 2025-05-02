@@ -285,7 +285,7 @@ def get_all_requirements() -> Dict:
 
 # --- Acceptance Criteria Functions ---
 
-def add_acceptance_criterion(criterion_id: str, criterion_text: str, metadata_json: Optional[str] = None) -> Dict:
+def add_acceptance_criterion(criterion_id: str, criterion_text: str, metadata_json: Optional[str] = None) -> Dict:#AI! Add a function to retrieve all acceptance criteria with one call. Make this function available to the Product-Owner
     """Adds or updates an acceptance criterion in the vector database.
 
     Args:
