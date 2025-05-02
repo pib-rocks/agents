@@ -9,7 +9,7 @@ from typing import List, Dict, Optional
 
 # --- Configuration ---
 # Use environment variables or defaults
-PERSIST_DIRECTORY = os.getenv("VECTOR_DB_PATH", "./chroma_db")#AI! Move the chroma_db-folder into the tools-folder, also for the other agents
+PERSIST_DIRECTORY = os.getenv("VECTOR_DB_PATH", "./tools/chroma_db") # Default path inside tools folder
 COLLECTION_NAME = os.getenv("VECTOR_DB_COLLECTION", "cerebra_requirements")
 # Using default embedding function (requires sentence-transformers)
 # For production, consider specifying a model explicitly or using a different provider.
