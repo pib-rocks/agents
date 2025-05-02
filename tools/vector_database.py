@@ -596,8 +596,8 @@ def get_all_acceptance_criteria() -> Dict:
 
 # --- Test Case Functions ---
 
-def add_test_case(test_case_id: str, test_case_document: str, metadata_json: Optional[str] = None) -> Dict:#AI! Remove the test_case_id as parameter from the add_test_case-function and make it determined automatically. The test_case_id-IDs should follow the schema "TC-1", "TC-2", means the prefix "TC-" followed by an integer. Use the existing helper-function _get_next_id that determines the highest of these numbers in the database so that the next one can automatically be assigned 
-    """Adds or updates a test case in the vector database.
+def add_test_case(test_case_document: str, metadata_json: Optional[str] = None) -> Dict:
+    """Adds a new test case to the vector database with an automatically generated ID.
 
     Args:
         test_case_id (str): A unique identifier for the test case. Testcase-IDs must consist of the prefix 'TC-' and their ongoing number (e.g., 'TC-1').
@@ -616,10 +616,16 @@ def add_test_case(test_case_id: str, test_case_document: str, metadata_json: Opt
                                        Example: '{ "type": "TestCase", "title": "...", "source_jira_ticket": "...", "validates_ac_ids": ["AC-1"], "test_steps": [{"step_description": "...", "is_automatable": true}] }'
 
     Returns:
-        Dict: Status dictionary indicating success or error.
+        Dict: Status dictionary indicating success or error, including the generated test case ID.
     """
-    if not test_case_id or not test_case_document:
-        return {"status": "error", "error_message": "Test Case ID and document text cannot be empty."}
+    if not test_case_document:
+        return {"status": "error", "error_message": "Test case document text cannot be empty."}
+
+    # Generate the next test case ID
+    try:
+        new_test_case_id = _get_next_id("TC-")
+    except Exception as e:
+        return {"status": "error", "error_message": f"Failed to generate test case ID: {e}"}
 
     parsed_metadata = {}
     if metadata_json:
@@ -628,7 +634,8 @@ def add_test_case(test_case_id: str, test_case_document: str, metadata_json: Opt
             if not isinstance(parsed_metadata, dict):
                 raise ValueError("Metadata must be a JSON object (dictionary).")
             if 'type' not in parsed_metadata:
-                 print(f"Warning: Adding test case '{test_case_id}' without explicit 'type' metadata.")
+                 # Use the generated ID in the warning message
+                 print(f"Warning: Adding test case '{new_test_case_id}' without explicit 'type' metadata.")
         except json.JSONDecodeError:
             return {"status": "error", "error_message": "Invalid JSON format provided for metadata."}
         except ValueError as ve:
@@ -639,14 +646,17 @@ def add_test_case(test_case_id: str, test_case_document: str, metadata_json: Opt
         parsed_metadata['type'] = 'TestCase'
 
     try:
+        # Use the generated ID in the upsert call
         collection.upsert(
-            ids=[test_case_id],
+            ids=[new_test_case_id],
             documents=[test_case_document],
             metadatas=[parsed_metadata]
         )
-        return {"status": "success", "report": f"Test Case '{test_case_id}' added/updated successfully."}
+        # Use the generated ID in the success message and return value
+        return {"status": "success", "report": f"Test Case '{new_test_case_id}' added successfully.", "test_case_id": new_test_case_id}
     except Exception as e:
-        return {"status": "error", "error_message": f"Failed to add/update test case '{test_case_id}': {e}"}
+        # Use the generated ID in the error message
+        return {"status": "error", "error_message": f"Failed to add test case '{new_test_case_id}': {e}"}
 
 
 def retrieve_similar_test_cases(query_text: str, n_results: int = 3, filter_metadata_json: Optional[str] = None) -> Dict:
