@@ -600,7 +600,6 @@ def add_test_case(test_case_document: str, metadata_json: Optional[str] = None) 
     """Adds a new test case to the vector database with an automatically generated ID.
 
     Args:
-        test_case_id (str): A unique identifier for the test case. Testcase-IDs must consist of the prefix 'TC-' and their ongoing number (e.g., 'TC-1').
         test_case_document (str): The primary text/description of the test case.
                                   Corresponds to the 'document' field in testcase_schema.json.
         metadata_json (Optional[str]): Optional JSON string representing metadata associated
