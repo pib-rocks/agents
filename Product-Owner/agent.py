@@ -21,7 +21,7 @@ from tools.jira_tools import (
     transition_jira_issue,
 )
 from tools.vector_storage import ( # Import vector DB tools
-    add_requirement,
+    add_requirement,#AI! Fix the imports
     retrieve_similar_requirements,
     delete_requirement,
     update_requirement,
