@@ -285,7 +285,7 @@ def get_all_requirements() -> Dict:
 
 # --- Acceptance Criteria Functions ---
 
-def add_acceptance_criterion(criterion_id: str, criterion_text: str, metadata_json: Optional[str] = None) -> Dict:#AI! Add a function to retrieve all acceptance criteria with one call. Make this function available to the Product-Owner
+def add_acceptance_criterion(criterion_id: str, criterion_text: str, metadata_json: Optional[str] = None) -> Dict:
     """Adds or updates an acceptance criterion in the vector database.
 
     Args:
@@ -512,6 +512,39 @@ def update_acceptance_criterion(criterion_id: str, new_criterion_text: Optional[
         return {"status": "success", "report": f"Acceptance Criterion '{criterion_id}' updated successfully ({', '.join(update_fields)})."}
     except Exception as e:
         return {"status": "error", "error_message": f"Failed to update criterion '{criterion_id}': {e}"}
+
+
+def get_all_acceptance_criteria() -> Dict:
+    """Retrieves all acceptance criteria stored in the vector database.
+
+    Returns:
+        Dict: Status dictionary with results or error message. Results include IDs, text, and metadata for all acceptance criteria.
+    """
+    try:
+        results = collection.get(
+            where={"type": "AcceptanceCriterion"}, # Filter specifically for acceptance criteria
+            include=['documents', 'metadatas'] # Specify what data to return
+        )
+
+        ids = results.get('ids', [])
+        documents = results.get('documents', [])
+        metadatas = results.get('metadatas', [])
+
+        if not ids:
+            return {"status": "success", "report": "No acceptance criteria found in the database."}
+
+        report_lines = [f"Found {len(ids)} acceptance criteria(s):"]
+        for i in range(len(ids)):
+            report_lines.append(
+                f"  - ID: {ids[i]}\n"
+                f"    Text: {documents[i]}\n"
+                f"    Metadata: {metadatas[i]}"
+            )
+
+        return {"status": "success", "report": "\n".join(report_lines)}
+
+    except Exception as e:
+        return {"status": "error", "error_message": f"Failed to retrieve all acceptance criteria: {e}"}
 
 
 # --- Test Case Functions ---
@@ -752,6 +785,7 @@ __all__ = [
     'retrieve_similar_acceptance_criteria',
     'delete_acceptance_criterion',
     'update_acceptance_criterion',
+    'get_all_acceptance_criteria', # Added function
     'add_test_case',
     'retrieve_similar_test_cases',
     'update_test_case',
