@@ -324,7 +324,7 @@ def get_all_requirements() -> Dict:
 
 # --- Acceptance Criteria Functions ---
 
-def add_acceptance_criterion(criterion_id: str, criterion_text: str, metadata_json: Optional[str] = None) -> Dict:
+def add_acceptance_criterion(criterion_id: str, criterion_text: str, metadata_json: Optional[str] = None) -> Dict:#AI! Remove the criterion_id as parameter from the add_readd_acceptance_criterion-function and make it determined automatically. The Criterion-IDs should follow the schema "AC-1", "AC-2", means the prefix "AC-" followed by an integer. Use the existing helper-function _get_next_id that determines the highest of these numbers in the database so that the next one can automatically be assigned to the new requirement.
     """Adds or updates an acceptance criterion in the vector database.
 
     Args:
