@@ -17,12 +17,10 @@ def add_acceptance_criterion(criterion_text: str, metadata_json: Optional[str] =
         criterion_text (str): The full text of the acceptance criterion.
         metadata_json (Optional[str]): Optional JSON string representing metadata associated
                                        with the acceptance criterion. Based on acceptance_criteria_schema.json,
-                                       this JSON object should contain the following keys:
+                                       this JSON object should contain keys like:
                                        - "type" (str): Must be "AcceptanceCriterion".
                                        - "source_jira_ticket" (str): The originating Jira ticket key (e.g., "PROJECT-123").
-                                       - "requirement_ids" (List[str]): A list of IDs for associated requirements (e.g., ["REQ-1"]).
-                                       - "test_case_ids" (List[str]): A list of IDs for associated test cases (e.g., ["TC-1"]).
-                                       Example: '{ "type": "AcceptanceCriterion", "source_jira_ticket": "PROJECT-123", "requirement_ids": ["REQ-1"], "test_case_ids": ["TC-1"] }'
+                                       Example: '{ "type": "AcceptanceCriterion", "source_jira_ticket": "PROJECT-123" }'
 
     Returns:
         Dict: Status dictionary indicating success or error, including the generated criterion ID.
@@ -78,8 +76,7 @@ def retrieve_similar_acceptance_criteria(query_text: str, n_results: int = 3, fi
         query_text (str): The text to search for similar criteria.
         n_results (int): The maximum number of similar criteria to return. Defaults to 3.
         filter_metadata_json (Optional[str]): Optional JSON string for metadata filtering based on the
-                                              fields defined in acceptance_criteria_schema.json
-                                              (e.g., "type", "source_jira_ticket", "requirement_ids", "test_case_ids").
+                                              stored metadata fields (e.g., "type", "source_jira_ticket").
                                               It's recommended to include '{"type": "AcceptanceCriterion"}'
                                               in the filter unless filtering by other specific AC metadata.
                                               Example: To find ACs for a specific ticket:
@@ -179,9 +176,8 @@ def update_acceptance_criterion(criterion_id: str, new_criterion_text: Optional[
         new_criterion_text (Optional[str]): The new text for the criterion. If None, text is not updated.
         new_metadata_json (Optional[str]): A JSON string representing the *complete* new metadata object.
                                            If provided, it *replaces* the existing metadata entirely.
-                                           The structure should follow acceptance_criteria_schema.json, including
-                                           keys like "type" (must be "AcceptanceCriterion"), "source_jira_ticket",
-                                           "requirement_ids", and "test_case_ids".
+                                           The structure should include keys like "type" (must be "AcceptanceCriterion")
+                                           and "source_jira_ticket".
                                            If None, metadata is not updated.
 
     Returns:

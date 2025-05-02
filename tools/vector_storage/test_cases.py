@@ -18,15 +18,14 @@ def add_test_case(test_case_document: str, metadata_json: Optional[str] = None) 
                                   Corresponds to the 'document' field in testcase_schema.json.
         metadata_json (Optional[str]): Optional JSON string representing metadata associated
                                        with the test case. Based on testcase_schema.json,
-                                       this JSON object should contain the following keys:
+                                       this JSON object should contain keys like:
                                        - "type" (str): Must be "TestCase".
                                        - "title" (str): A descriptive title for the test case.
                                        - "source_jira_ticket" (str): The originating Jira ticket key (e.g., "PROJECT-123").
-                                       - "validates_ac_ids" (List[str]): A list of IDs for acceptance criteria this test case validates (e.g., ["AC-1"]). #AI! Remove the references between requirements, acceptance criteria and test-cases from the metadata. Also update the agent_instructions and the method-descriptions accordingly
                                        - "test_steps" (List[Dict]): A list of test step objects, where each object has:
                                            - "step_description" (str): Description of the step.
                                            - "is_automatable" (bool): Whether the step can be automated.
-                                       Example: '{ "type": "TestCase", "title": "...", "source_jira_ticket": "...", "validates_ac_ids": ["AC-1"], "test_steps": [{"step_description": "...", "is_automatable": true}] }'
+                                       Example: '{ "type": "TestCase", "title": "...", "source_jira_ticket": "...", "test_steps": [{"step_description": "...", "is_automatable": true}] }'
 
     Returns:
         Dict: Status dictionary indicating success or error, including the generated test case ID.
@@ -81,8 +80,7 @@ def retrieve_similar_test_cases(query_text: str, n_results: int = 3, filter_meta
         query_text (str): The text to search for similar test cases.
         n_results (int): The maximum number of similar test cases to return. Defaults to 3.
         filter_metadata_json (Optional[str]): Optional JSON string for metadata filtering based on the
-                                              fields defined in testcase_schema.json
-                                              (e.g., "type", "title", "source_jira_ticket", "validates_ac_ids").
+                                              stored metadata fields (e.g., "type", "title", "source_jira_ticket").
                                               Note: Filtering on nested fields like "test_steps" might require specific ChromaDB syntax or might not be directly supported.
                                               It's recommended to include '{"type": "TestCase"}'
                                               in the filter unless filtering by other specific TC metadata.
@@ -160,9 +158,8 @@ def update_test_case(test_case_id: str, new_test_case_document: Optional[str] = 
         new_test_case_document (Optional[str]): The new document text for the test case. If None, text is not updated.
         new_metadata_json (Optional[str]): A JSON string representing the *complete* new metadata object.
                                            If provided, it *replaces* the existing metadata entirely.
-                                           The structure should follow testcase_schema.json, including
-                                           keys like "type" (must be "TestCase"), "title", "source_jira_ticket",
-                                           "validates_ac_ids", and "test_steps" (with its nested structure).
+                                           The structure should include keys like "type" (must be "TestCase"),
+                                           "title", "source_jira_ticket", and "test_steps" (with its nested structure).
                                            If None, metadata is not updated.
 
     Returns:

@@ -16,11 +16,10 @@ def add_requirement(requirement_text: str, metadata_json: Optional[str] = None) 
         requirement_text (str): The full text of the requirement.
         metadata_json (Optional[str]): Optional JSON string representing metadata associated
                                        with the requirement. Based on requirement_schema.json,
-                                       this JSON object should contain the following keys:
+                                       this JSON object should contain keys like:
                                        - "type" (str): Must be "Requirement".
                                        - "source_jira_ticket" (str): The originating Jira ticket key (e.g., "PROJECT-123").
-                                       - "acceptance_criteria_ids" (List[str]): A list of IDs for associated acceptance criteria (e.g., ["AC-1", "AC-2"]).
-                                       Example: '{ "type": "Requirement", "source_jira_ticket": "PROJECT-123", "acceptance_criteria_ids": ["AC-1"] }'
+                                       Example: '{ "type": "Requirement", "source_jira_ticket": "PROJECT-123" }'
 
     Returns:
         Dict: Status dictionary indicating success or error, including the generated requirement ID.
@@ -74,8 +73,8 @@ def retrieve_similar_requirements(query_text: str, n_results: int = 3, filter_me
         query_text (str): The text to search for similar requirements (e.g., a new user story, a feature description).
         n_results (int): The maximum number of similar requirements to return. Defaults to 3.
         filter_metadata_json (Optional[str]): Optional JSON string representing a metadata dictionary
-                                              to filter results based on the stored metadata fields defined
-                                              in requirement_schema.json (e.g., "type", "source_jira_ticket").
+                                              to filter results based on the stored metadata fields
+                                              (e.g., "type", "source_jira_ticket").
                                               Example: To find requirements from a specific ticket:
                                               '{"type": "Requirement", "source_jira_ticket": "PROJECT-123"}'
                                               Uses ChromaDB's 'where' filter format (see ChromaDB docs for operators like $in, $eq, etc.).
@@ -141,13 +140,9 @@ def update_requirement(requirement_id: str, new_requirement_text: Optional[str] 
                                            The structure of the metadata must be like this:
 
                                             {
-                                            "metadata": {
-                                                "type": "functional", # type can only be "functional" or "non-functional"
-                                                "source_jira_ticket": "PR-123",
-                                                "acceptance_criteria_ids": [
-                                                    "AC-1",
-                                                    "AC-2"
-                                                ]}
+                                                "type": "Requirement", # Or other relevant fields like "functional"/"non-functional" if used
+                                                "source_jira_ticket": "PR-123"
+                                                # Add other relevant metadata fields here
                                             }
 
 
