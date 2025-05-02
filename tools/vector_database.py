@@ -37,7 +37,7 @@ collection = client.get_or_create_collection(
 import json # Add json import for parsing
 
 # --- Requirement Functions ---
-def add_requirement(requirement_id: str, requirement_text: str, metadata_json: Optional[str] = None) -> Dict:
+def add_requirement(requirement_id: str, requirement_text: str, metadata_json: Optional[str] = None) -> Dict:#AI! Add a function to retrieve all requirements with one call. Make this function available to the Product-Owner
     """Adds or updates a software requirement in the vector database.
 
     Args:
