@@ -6,7 +6,7 @@ import os
 import chromadb
 from chromadb.utils import embedding_functions
 from typing import List, Dict, Optional
-
+#AI! To make the handling of this large file easier, create a folder "vector_storage", then split these functions here according to their scope "requirements", "acceptance criteria" and "test-case" into three different modules
 # --- Configuration ---
 # Use environment variables or defaults
 PERSIST_DIRECTORY = os.getenv("VECTOR_DB_PATH", "./tools/chroma_db") # Default path inside tools folder
