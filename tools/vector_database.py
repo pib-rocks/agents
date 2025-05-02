@@ -71,7 +71,6 @@ def add_requirement(requirement_text: str, metadata_json: Optional[str] = None) 
     """Adds a new software requirement to the vector database with an automatically generated ID.
 
     Args:
-        requirement_id (str): A unique identifier for the requirement. Requirement-IDs must consist of the prefix 'REQ-' and their ongoing number (e.g., 'REQ-1', 'REQ-2').
         requirement_text (str): The full text of the requirement.
         metadata_json (Optional[str]): Optional JSON string representing metadata associated
                                        with the requirement. Based on requirement_schema.json,
