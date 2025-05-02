@@ -53,6 +53,8 @@ def add_acceptance_criterion(criterion_text: str, metadata_json: Optional[str] =
     # Automatically add type if not present? Consider implications.
     if 'type' not in parsed_metadata:
         parsed_metadata['type'] = 'AcceptanceCriterion' # Enforce type for consistency
+    # Add the change date
+    parsed_metadata['change_date'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
     try:
         # Use the generated ID in the upsert call

@@ -50,6 +50,8 @@ def add_requirement(requirement_text: str, metadata_json: Optional[str] = None) 
 
     # Ensure 'type' is set in metadata
     parsed_metadata['type'] = 'Requirement'
+    # Add the change date
+    parsed_metadata['change_date'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
     try:
         # Use upsert with the generated ID
@@ -200,6 +202,9 @@ def update_requirement(requirement_id: str, new_requirement_text: Optional[str] 
             return {"status": "error", "error_message": "Invalid JSON format provided for new metadata."}
         except ValueError as ve:
              return {"status": "error", "error_message": str(ve)}
+
+    # Add/Update the change date before upserting
+    final_metadata['change_date'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
     # 3. Use upsert to perform the update
     try:

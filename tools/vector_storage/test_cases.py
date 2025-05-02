@@ -56,6 +56,8 @@ def add_test_case(test_case_document: str, metadata_json: Optional[str] = None) 
     # Enforce type for consistency
     if 'type' not in parsed_metadata:
         parsed_metadata['type'] = 'TestCase'
+    # Add the change date
+    parsed_metadata['change_date'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
     try:
         # Use the generated ID in the upsert call
