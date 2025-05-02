@@ -21,17 +21,19 @@ from tools.jira_tools import (
     transition_jira_issue,
 )
 from tools.vector_storage import ( # Import vector DB tools
-    add_requirement,#AI! Fix the imports
+    # Requirement Functions
+    add_requirement,
     retrieve_similar_requirements,
-    delete_requirement,
     update_requirement,
     delete_requirement,
     get_all_requirements,
+    # Acceptance Criteria Functions
     add_acceptance_criterion,
     retrieve_similar_acceptance_criteria,
-    delete_acceptance_criterion,
     update_acceptance_criterion,
+    delete_acceptance_criterion,
     get_all_acceptance_criteria,
+    # Test Case Functions
     add_test_case,
     retrieve_similar_test_cases,
     update_test_case,
