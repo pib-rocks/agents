@@ -39,7 +39,12 @@ from tools.vector_storage.acceptance_criteria import ( # Import vector DB tools
 )
 
 from tools.vector_storage.test_cases import (
-#AI! Import here all the functions from test_cases.py
+    # Test Case Functions
+    add_test_case,
+    retrieve_similar_test_cases,
+    update_test_case,
+    delete_test_case,
+    get_all_test_cases
 )
 
 # Get model name from environment variable, with a default fallback
