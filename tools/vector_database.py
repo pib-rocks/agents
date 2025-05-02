@@ -328,7 +328,6 @@ def add_acceptance_criterion(criterion_text: str, metadata_json: Optional[str] =
     """Adds a new acceptance criterion to the vector database with an automatically generated ID.
 
     Args:
-        criterion_id (str): A unique identifier for the criterion. Acceptance-criteria-IDs must consist of the prefix 'AC-' and their ongoing number (e.g. 'AC-1').
         criterion_text (str): The full text of the acceptance criterion.
         metadata_json (Optional[str]): Optional JSON string representing metadata associated
                                        with the acceptance criterion. Based on acceptance_criteria_schema.json,
