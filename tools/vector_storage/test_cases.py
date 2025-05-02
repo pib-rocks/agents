@@ -22,7 +22,7 @@ def add_test_case(test_case_document: str, metadata_json: Optional[str] = None) 
                                        - "type" (str): Must be "TestCase".
                                        - "title" (str): A descriptive title for the test case.
                                        - "source_jira_ticket" (str): The originating Jira ticket key (e.g., "PROJECT-123").
-                                       - "validates_ac_ids" (List[str]): A list of IDs for acceptance criteria this test case validates (e.g., ["AC-1"]).
+                                       - "validates_ac_ids" (List[str]): A list of IDs for acceptance criteria this test case validates (e.g., ["AC-1"]). #AI! Remove the references between requirements, acceptance criteria and test-cases from the metadata. Also update the agent_instructions and the method-descriptions accordingly
                                        - "test_steps" (List[Dict]): A list of test step objects, where each object has:
                                            - "step_description" (str): Description of the step.
                                            - "is_automatable" (bool): Whether the step can be automated.
