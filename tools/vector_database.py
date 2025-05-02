@@ -37,7 +37,7 @@ collection = client.get_or_create_collection(
 import json # Add json import for parsing
 
 # --- Requirement Functions ---
-def add_requirement(requirement_id: str, requirement_text: str, metadata_json: Optional[str] = None) -> Dict:#AI! Add a function to retrieve all requirements with one call. Make this function available to the Product-Owner
+def add_requirement(requirement_id: str, requirement_text: str, metadata_json: Optional[str] = None) -> Dict:
     """Adds or updates a software requirement in the vector database.
 
     Args:
@@ -248,6 +248,39 @@ def delete_requirement(requirement_id: str) -> Dict:
          # Catch potential ChromaDB errors (e.g., ID not found - though delete might not error)
          # Check ChromaDB documentation for specific delete error handling if needed.
         return {"status": "error", "error_message": f"Failed to delete requirement '{requirement_id}': {e}"}
+
+
+def get_all_requirements() -> Dict:
+    """Retrieves all requirements stored in the vector database.
+
+    Returns:
+        Dict: Status dictionary with results or error message. Results include IDs, text, and metadata for all requirements.
+    """
+    try:
+        results = collection.get(
+            where={"type": "Requirement"}, # Filter specifically for requirements
+            include=['documents', 'metadatas'] # Specify what data to return
+        )
+
+        ids = results.get('ids', [])
+        documents = results.get('documents', [])
+        metadatas = results.get('metadatas', [])
+
+        if not ids:
+            return {"status": "success", "report": "No requirements found in the database."}
+
+        report_lines = [f"Found {len(ids)} requirement(s):"]
+        for i in range(len(ids)):
+            report_lines.append(
+                f"  - ID: {ids[i]}\n"
+                f"    Text: {documents[i]}\n"
+                f"    Metadata: {metadatas[i]}"
+            )
+
+        return {"status": "success", "report": "\n".join(report_lines)}
+
+    except Exception as e:
+        return {"status": "error", "error_message": f"Failed to retrieve all requirements: {e}"}
 
 
 # --- Acceptance Criteria Functions ---
@@ -713,6 +746,7 @@ __all__ = [
     'retrieve_similar_requirements',
     'update_requirement',
     'delete_requirement',
+    'get_all_requirements', # Added function
     # Acceptance Criteria Functions
     'add_acceptance_criterion',
     'retrieve_similar_acceptance_criteria',
