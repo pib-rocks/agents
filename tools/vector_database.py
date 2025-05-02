@@ -549,7 +549,7 @@ def get_all_acceptance_criteria() -> Dict:
 
 # --- Test Case Functions ---
 
-def add_test_case(test_case_id: str, test_case_document: str, metadata_json: Optional[str] = None) -> Dict:
+def add_test_case(test_case_id: str, test_case_document: str, metadata_json: Optional[str] = None) -> Dict:#AI! Add a function to retrieve all testcases with one call. Make this function available to the Product-Owner
     """Adds or updates a test case in the vector database.
 
     Args:
