@@ -35,10 +35,40 @@ collection = client.get_or_create_collection(
 )
 
 import json # Add json import for parsing
+import re # Import regex for ID parsing
+
+# --- Helper Function for ID Generation ---
+def _get_next_id(prefix: str) -> str:
+    """
+    Determines the next available ID for a given prefix (e.g., "REQ-").
+    Retrieves all IDs, finds the highest number associated with the prefix,
+    and returns the prefix + (highest_number + 1).
+    """
+    max_num = 0
+    try:
+        # Get all IDs from the collection
+        all_ids = collection.get()['ids']
+        
+        # Filter IDs matching the prefix and extract numbers
+        pattern = re.compile(f"^{re.escape(prefix)}(\\d+)$")
+        for item_id in all_ids:
+            match = pattern.match(item_id)
+            if match:
+                num = int(match.group(1))
+                if num > max_num:
+                    max_num = num
+    except Exception as e:
+        # Log error or handle case where collection might be empty/unavailable
+        print(f"Warning: Could not accurately determine max ID for prefix '{prefix}': {e}. Starting from 1.")
+        max_num = 0 # Reset to 0 ensure next ID is prefix + 1
+
+    next_num = max_num + 1
+    return f"{prefix}{next_num}"
+
 
 # --- Requirement Functions ---
-def add_requirement(requirement_id: str, requirement_text: str, metadata_json: Optional[str] = None) -> Dict: #AI! Remove the requirement_id as parameter from the add_requirement-function and make it determined automatically. The Requirementd-IDs should follow the schema "REQ-1", "REQ-2", means the prefix "REQ-" followed by an integer. Add a helper-function that determines the highest of these numbers in the database so that the next one can automatically be assigned to the new requirement.
-    """Adds or updates a software requirement in the vector database.
+def add_requirement(requirement_text: str, metadata_json: Optional[str] = None) -> Dict:
+    """Adds a new software requirement to the vector database with an automatically generated ID.
 
     Args:
         requirement_id (str): A unique identifier for the requirement. Requirement-IDs must consist of the prefix 'REQ-' and their ongoing number (e.g., 'REQ-1', 'REQ-2').
@@ -52,10 +82,17 @@ def add_requirement(requirement_id: str, requirement_text: str, metadata_json: O
                                        Example: '{ "type": "Requirement", "source_jira_ticket": "PROJECT-123", "acceptance_criteria_ids": ["AC-1"] }'
 
     Returns:
-        Dict: Status dictionary indicating success or error.
+        Dict: Status dictionary indicating success or error, including the generated requirement ID.
     """
-    if not requirement_id or not requirement_text:
-        return {"status": "error", "error_message": "Requirement ID and text cannot be empty."}
+    if not requirement_text:
+        return {"status": "error", "error_message": "Requirement text cannot be empty."}
+
+    # Generate the next requirement ID
+    try:
+        new_requirement_id = _get_next_id("REQ-")
+    except Exception as e:
+        return {"status": "error", "error_message": f"Failed to generate requirement ID: {e}"}
+
 
     parsed_metadata = {}
     if metadata_json:
@@ -71,17 +108,20 @@ def add_requirement(requirement_id: str, requirement_text: str, metadata_json: O
     # You might want to add standard metadata fields automatically, e.g., timestamp
     # parsed_metadata['last_updated'] = datetime.datetime.utcnow().isoformat()
 
+    # Ensure 'type' is set in metadata
+    parsed_metadata['type'] = 'Requirement'
+
     try:
-        # Use upsert to add or update based on ID
+        # Use upsert with the generated ID
         collection.upsert(
-            ids=[requirement_id],
+            ids=[new_requirement_id],
             documents=[requirement_text],
             metadatas=[parsed_metadata] # Chroma expects a list for each argument
         )
-        return {"status": "success", "report": f"Requirement '{requirement_id}' added/updated successfully."}
+        return {"status": "success", "report": f"Requirement '{new_requirement_id}' added successfully.", "requirement_id": new_requirement_id}
     except Exception as e:
         # Catch potential ChromaDB errors or other issues
-        return {"status": "error", "error_message": f"Failed to add/update requirement '{requirement_id}': {e}"}
+        return {"status": "error", "error_message": f"Failed to add requirement '{new_requirement_id}': {e}"}
 
 
 def retrieve_similar_requirements(query_text: str, n_results: int = 3, filter_metadata_json: Optional[str] = None) -> Dict:
