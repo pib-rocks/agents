@@ -37,7 +37,7 @@ collection = client.get_or_create_collection(
 import json # Add json import for parsing
 
 # --- Requirement Functions ---
-def add_requirement(requirement_id: str, requirement_text: str, metadata_json: Optional[str] = None) -> Dict:
+def add_requirement(requirement_id: str, requirement_text: str, metadata_json: Optional[str] = None) -> Dict: #AI! Remove the requirement_id as parameter from the add_requirement-function and make it determined automatically. The Requirementd-IDs should follow the schema "REQ-1", "REQ-2", means the prefix "REQ-" followed by an integer. Add a helper-function that determines the highest of these numbers in the database so that the next one can automatically be assigned to the new requirement.
     """Adds or updates a software requirement in the vector database.
 
     Args:
