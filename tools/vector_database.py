@@ -596,7 +596,7 @@ def get_all_acceptance_criteria() -> Dict:
 
 # --- Test Case Functions ---
 
-def add_test_case(test_case_id: str, test_case_document: str, metadata_json: Optional[str] = None) -> Dict:
+def add_test_case(test_case_id: str, test_case_document: str, metadata_json: Optional[str] = None) -> Dict:#AI! Remove the test_case_id as parameter from the add_test_case-function and make it determined automatically. The test_case_id-IDs should follow the schema "TC-1", "TC-2", means the prefix "TC-" followed by an integer. Use the existing helper-function _get_next_id that determines the highest of these numbers in the database so that the next one can automatically be assigned 
     """Adds or updates a test case in the vector database.
 
     Args:
