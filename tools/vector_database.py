@@ -549,7 +549,7 @@ def get_all_acceptance_criteria() -> Dict:
 
 # --- Test Case Functions ---
 
-def add_test_case(test_case_id: str, test_case_document: str, metadata_json: Optional[str] = None) -> Dict:#AI! Add a function to retrieve all testcases with one call. Make this function available to the Product-Owner
+def add_test_case(test_case_id: str, test_case_document: str, metadata_json: Optional[str] = None) -> Dict:
     """Adds or updates a test case in the vector database.
 
     Args:
@@ -772,6 +772,39 @@ def delete_test_case(test_case_id: str) -> Dict:
         return {"status": "error", "error_message": f"Failed to delete test case '{test_case_id}': {e}"}
 
 
+def get_all_test_cases() -> Dict:
+    """Retrieves all test cases stored in the vector database.
+
+    Returns:
+        Dict: Status dictionary with results or error message. Results include IDs, documents, and metadata for all test cases.
+    """
+    try:
+        results = collection.get(
+            where={"type": "TestCase"}, # Filter specifically for test cases
+            include=['documents', 'metadatas'] # Specify what data to return
+        )
+
+        ids = results.get('ids', [])
+        documents = results.get('documents', [])
+        metadatas = results.get('metadatas', [])
+
+        if not ids:
+            return {"status": "success", "report": "No test cases found in the database."}
+
+        report_lines = [f"Found {len(ids)} test case(s):"]
+        for i in range(len(ids)):
+            report_lines.append(
+                f"  - ID: {ids[i]}\n"
+                f"    Document: {documents[i]}\n" # Use Document for consistency with TC schema
+                f"    Metadata: {metadatas[i]}"
+            )
+
+        return {"status": "success", "report": "\n".join(report_lines)}
+
+    except Exception as e:
+        return {"status": "error", "error_message": f"Failed to retrieve all test cases: {e}"}
+
+
 # Export public functions
 __all__ = [
     # Requirement Functions
@@ -789,5 +822,6 @@ __all__ = [
     'add_test_case',
     'retrieve_similar_test_cases',
     'update_test_case',
-    'delete_test_case'
+    'delete_test_case',
+    'get_all_test_cases' # Added function
 ]
