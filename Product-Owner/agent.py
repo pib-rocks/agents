@@ -20,25 +20,26 @@ from tools.jira_tools import (
     get_jira_transitions,
     transition_jira_issue,
 )
-from tools.vector_storage import ( # Import vector DB tools
+from tools.vector_storage.requirements import ( # Import vector DB tools
     # Requirement Functions
     add_requirement,
     retrieve_similar_requirements,
     update_requirement,
     delete_requirement,
     get_all_requirements,
+)
+
+from tools.vector_storage.acceptance_criteria import ( # Import vector DB tools
     # Acceptance Criteria Functions
     add_acceptance_criterion,
     retrieve_similar_acceptance_criteria,
     update_acceptance_criterion,
     delete_acceptance_criterion,
     get_all_acceptance_criteria,
-    # Test Case Functions
-    add_test_case,
-    retrieve_similar_test_cases,
-    update_test_case,
-    delete_test_case,
-    get_all_test_cases
+)
+
+from tools.vector_storage.test_cases import (
+#AI! Import here all the functions from test_cases.py
 )
 
 # Get model name from environment variable, with a default fallback
