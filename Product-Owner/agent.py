@@ -20,7 +20,7 @@ from tools.jira_tools import (
     get_jira_transitions,
     transition_jira_issue,
 )
-from tools.vector_database import ( # Import vector DB tools
+from tools.vector_storage import ( # Import vector DB tools
     add_requirement,
     retrieve_similar_requirements,
     delete_requirement,
