@@ -2,6 +2,7 @@
 Functions for managing software requirements in the vector database.
 """
 import json
+import datetime
 from typing import List, Dict, Optional
 
 # Import shared components from the package initializer

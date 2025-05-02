@@ -2,6 +2,7 @@
 Functions for managing acceptance criteria in the vector database.
 """
 import json
+import datetime
 from typing import List, Dict, Optional
 
 # Import shared components from the package initializer
@@ -207,6 +208,8 @@ def update_acceptance_criterion(criterion_id: str, new_criterion_text: Optional[
 
     updates_to_make = {}
     parsed_new_metadata = None
+    # Get current time once for consistency
+    current_time_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
     if new_criterion_text is not None:
         if not new_criterion_text.strip():
@@ -230,6 +233,14 @@ def update_acceptance_criterion(criterion_id: str, new_criterion_text: Optional[
             return {"status": "error", "error_message": "Invalid JSON format provided for new metadata."}
         except ValueError as ve:
              return {"status": "error", "error_message": str(ve)}
+        # Add change_date to the new metadata if it's being updated
+        parsed_new_metadata['change_date'] = current_time_iso
+        updates_to_make['metadatas'] = [parsed_new_metadata]
+
+    # If only text is updated, we still need to update the change_date in the existing metadata
+    if 'documents' in updates_to_make and 'metadatas' not in updates_to_make:
+         existing_metadata['change_date'] = current_time_iso
+         updates_to_make['metadatas'] = [existing_metadata] # Add metadata update to the list of updates
 
     if not updates_to_make:
          # This case should be caught earlier, but as a safeguard
