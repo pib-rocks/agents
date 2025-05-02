@@ -324,8 +324,8 @@ def get_all_requirements() -> Dict:
 
 # --- Acceptance Criteria Functions ---
 
-def add_acceptance_criterion(criterion_id: str, criterion_text: str, metadata_json: Optional[str] = None) -> Dict:#AI! Remove the criterion_id as parameter from the add_readd_acceptance_criterion-function and make it determined automatically. The Criterion-IDs should follow the schema "AC-1", "AC-2", means the prefix "AC-" followed by an integer. Use the existing helper-function _get_next_id that determines the highest of these numbers in the database so that the next one can automatically be assigned to the new requirement.
-    """Adds or updates an acceptance criterion in the vector database.
+def add_acceptance_criterion(criterion_text: str, metadata_json: Optional[str] = None) -> Dict:
+    """Adds a new acceptance criterion to the vector database with an automatically generated ID.
 
     Args:
         criterion_id (str): A unique identifier for the criterion. Acceptance-criteria-IDs must consist of the prefix 'AC-' and their ongoing number (e.g. 'AC-1').
@@ -351,10 +351,9 @@ def add_acceptance_criterion(criterion_id: str, criterion_text: str, metadata_js
             parsed_metadata = json.loads(metadata_json)
             if not isinstance(parsed_metadata, dict):
                 raise ValueError("Metadata must be a JSON object (dictionary).")
-            # Ensure type is set if provided, or default if appropriate
+            # Ensure type is set if provided
             if 'type' not in parsed_metadata:
-                 print(f"Warning: Adding acceptance criterion '{criterion_id}' without explicit 'type' metadata.")
-                 # parsed_metadata['type'] = 'AcceptanceCriterion' # Optionally enforce type
+                 print(f"Warning: Adding acceptance criterion '{new_criterion_id}' without explicit 'type' metadata. Defaulting to 'AcceptanceCriterion'.")
         except json.JSONDecodeError:
             return {"status": "error", "error_message": "Invalid JSON format provided for metadata."}
         except ValueError as ve:
@@ -366,13 +365,13 @@ def add_acceptance_criterion(criterion_id: str, criterion_text: str, metadata_js
 
     try:
         collection.upsert(
-            ids=[criterion_id],
+            ids=[new_criterion_id],
             documents=[criterion_text],
             metadatas=[parsed_metadata]
         )
-        return {"status": "success", "report": f"Acceptance Criterion '{criterion_id}' added/updated successfully."}
+        return {"status": "success", "report": f"Acceptance Criterion '{new_criterion_id}' added successfully.", "criterion_id": new_criterion_id}
     except Exception as e:
-        return {"status": "error", "error_message": f"Failed to add/update criterion '{criterion_id}': {e}"}
+        return {"status": "error", "error_message": f"Failed to add criterion '{new_criterion_id}': {e}"}
 
 
 def retrieve_similar_acceptance_criteria(query_text: str, n_results: int = 3, filter_metadata_json: Optional[str] = None) -> Dict:
