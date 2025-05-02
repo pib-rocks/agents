@@ -339,10 +339,16 @@ def add_acceptance_criterion(criterion_text: str, metadata_json: Optional[str] =
                                        Example: '{ "type": "AcceptanceCriterion", "source_jira_ticket": "PROJECT-123", "requirement_ids": ["REQ-1"], "test_case_ids": ["TC-1"] }'
 
     Returns:
-        Dict: Status dictionary indicating success or error.
+        Dict: Status dictionary indicating success or error, including the generated criterion ID.
     """
-    if not criterion_id or not criterion_text:
-        return {"status": "error", "error_message": "Criterion ID and text cannot be empty."}
+    if not criterion_text:
+        return {"status": "error", "error_message": "Criterion text cannot be empty."}
+
+    # Generate the next criterion ID
+    try:
+        new_criterion_id = _get_next_id("AC-")
+    except Exception as e:
+        return {"status": "error", "error_message": f"Failed to generate criterion ID: {e}"}
 
     parsed_metadata = {}
     if metadata_json:
@@ -352,6 +358,7 @@ def add_acceptance_criterion(criterion_text: str, metadata_json: Optional[str] =
                 raise ValueError("Metadata must be a JSON object (dictionary).")
             # Ensure type is set if provided
             if 'type' not in parsed_metadata:
+                 # Use the generated ID in the warning message
                  print(f"Warning: Adding acceptance criterion '{new_criterion_id}' without explicit 'type' metadata. Defaulting to 'AcceptanceCriterion'.")
         except json.JSONDecodeError:
             return {"status": "error", "error_message": "Invalid JSON format provided for metadata."}
@@ -363,13 +370,16 @@ def add_acceptance_criterion(criterion_text: str, metadata_json: Optional[str] =
         parsed_metadata['type'] = 'AcceptanceCriterion' # Enforce type for consistency
 
     try:
+        # Use the generated ID in the upsert call
         collection.upsert(
             ids=[new_criterion_id],
             documents=[criterion_text],
             metadatas=[parsed_metadata]
         )
+        # Use the generated ID in the success message and return value
         return {"status": "success", "report": f"Acceptance Criterion '{new_criterion_id}' added successfully.", "criterion_id": new_criterion_id}
     except Exception as e:
+        # Use the generated ID in the error message
         return {"status": "error", "error_message": f"Failed to add criterion '{new_criterion_id}': {e}"}
 
 
