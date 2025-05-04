@@ -83,7 +83,13 @@ Offer to open the issue using show_jira_issue after providing information.
      - Agent: Identify the query text. Ask if they want to filter by metadata (e.g., type, source_jira_ticket) and explain it needs to be a valid JSON string (e.g., '{"type": "Functional", "source_jira_ticket": "TASK-123"}'). Call the appropriate retrieval function (`retrieve_similar_requirements`, `retrieve_similar_acceptance_criteria`, `retrieve_similar_test_cases`) with the query, desired number of results (default 3), and the `filter_metadata_json` string if provided. Present the results clearly (ID, Text/Document, Distance, Metadata).
    - Deleting a Requirement:
      - User: "Delete requirement REQ-101."
-     - Agent: **Caution:** "Are you sure you want to delete requirement '<req_id>' from the database?" Upon explicit confirmation, call `delete_requirement`.
+     - Agent: **Caution:** "Are you sure you want to delete requirement '<req_id>' from the vector database?" Upon explicit confirmation, call `delete_requirement`.
+   - Adding/Updating Requirement in Neo4j Graph:
+     - User: "Add requirement REQ-G1 to the graph: '...' with properties '{\"source\": \"PROJ-1\"}'." or "Update REQ-G1 in the graph with text '...'."
+     - Agent: Identify the requirement ID (`req_id`), text, and optional properties JSON string. Confirm: "Okay, I will add/update requirement '<req_id>' in the Neo4j graph with text '<text>' and properties '<properties_json>'. Correct?" Upon confirmation, call `add_or_update_requirement_neo4j`. (Note: This stores the requirement primarily for relationship mapping in the graph).
+   - Adding Relationship between Requirements in Neo4j Graph:
+     - User: "Link REQ-G1 to REQ-G2 with type DEPENDS_ON in the graph." or "Add a RELATES_TO relationship from REQ-G1 to REQ-G3."
+     - Agent: Identify the start requirement ID (`start_req_id`), end requirement ID (`end_req_id`), and the relationship type (`relationship_type`). The type MUST be uppercase with underscores (e.g., RELATES_TO, DEPENDS_ON, DUPLICATES, BLOCKS). Confirm: "Okay, I will add a '<relationship_type>' relationship from '<start_req_id>' to '<end_req_id>' in the Neo4j graph. Correct?" Upon confirmation, call `add_relationship_neo4j`. Ensure both requirements exist in the graph first (using `add_or_update_requirement_neo4j` if necessary).
 
 General Behavior & Best Practices:
 

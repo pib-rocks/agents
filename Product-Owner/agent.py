@@ -46,6 +46,10 @@ from tools.vector_storage.test_cases import (
     delete_test_case,
     get_all_test_cases
 )
+from tools.neo4j_requirements_tool import ( # Import Neo4j tools
+    add_or_update_requirement_neo4j,
+    add_relationship_neo4j
+)
 
 # Get model name from environment variable, with a default fallback
 # Note: This line was added in a previous step (commit abb4a04) but wasn't in the provided file content.
@@ -107,6 +111,9 @@ root_agent = Agent(
         retrieve_similar_test_cases,
         update_test_case,
         delete_test_case,
-        get_all_test_cases
+        get_all_test_cases,
+        # Neo4j Tools
+        add_or_update_requirement_neo4j,
+        add_relationship_neo4j,
     ],
 )

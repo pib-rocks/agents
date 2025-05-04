@@ -5,3 +5,4 @@ requests
 google-api-python-client # For Google Search and other Google APIs
 chromadb
 sentence-transformers # Required for default ChromaDB embeddings
+neo4j>=5.15.0 # Neo4j graph database driver
