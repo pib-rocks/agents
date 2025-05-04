@@ -24,10 +24,15 @@ def _get_driver():
         if not NEO4J_PASSWORD:
             raise ValueError("NEO4J_PASSWORD environment variable not set.")
         try:
-            _driver = GraphDatabase.driver(NEO4J_URI, auth=basic_auth(NEO4J_USER, NEO4J_PASSWORD))
+            # Specify the database name during driver initialization
+            _driver = GraphDatabase.driver(
+                NEO4J_URI,
+                auth=basic_auth(NEO4J_USER, NEO4J_PASSWORD),
+                database="pib" # Use the 'pib' database
+            )
             # Verify connection
             _driver.verify_connectivity()
-            print("Neo4j connection successful.")
+            print("Neo4j connection successful to database 'pib'.")
         except Exception as e:
             print(f"Error connecting to Neo4j: {e}")
             _driver = None # Ensure driver is None if connection fails
