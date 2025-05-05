@@ -19,6 +19,7 @@ from tools.jira_tools import (
     show_jira_issue,
     get_jira_transitions,
     transition_jira_issue,
+    search_jira_issues_by_time, # Added time search tool
 )
 from tools.vector_storage.requirements import ( # Import vector DB tools
     # Requirement Functions
@@ -115,5 +116,7 @@ root_agent = Agent(
         # Neo4j Tools
         add_or_update_requirement_neo4j,
         add_relationship_neo4j,
+        # Time Search Tool
+        search_jira_issues_by_time,
     ],
 )
