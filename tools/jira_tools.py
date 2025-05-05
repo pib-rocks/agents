@@ -413,6 +413,124 @@ def update_jira_issue(
             "error_message": f"An error occurred: {req_err}",
         }
 
+# --- Time-based Search ---
+
+def search_jira_issues_by_time(
+    time_field: str,
+    start_time: Optional[str] = None,
+    end_time: Optional[str] = None,
+    additional_jql: Optional[str] = None,
+    max_results: int = 50
+) -> dict:
+    """Searches for Jira issues based on time criteria (created or updated).
+
+    Requires JIRA_INSTANCE_URL, JIRA_EMAIL, and JIRA_API_KEY environment variables.
+    Time format should be 'YYYY-MM-DD' or 'YYYY-MM-DD HH:mm'.
+
+    Args:
+        time_field (str): The time field to search on ('created' or 'updated').
+        start_time (Optional[str]): The start date/time (inclusive). Format: 'YYYY-MM-DD' or 'YYYY-MM-DD HH:mm'.
+        end_time (Optional[str]): The end date/time (inclusive). Format: 'YYYY-MM-DD' or 'YYYY-MM-DD HH:mm'.
+        additional_jql (Optional[str]): Extra JQL clauses to combine with the time query (e.g., 'project = PIB AND status = Done').
+        max_results (int): Maximum number of issues to return. Defaults to 50.
+
+    Returns:
+        dict: status and result (report listing issues) or error message.
+    """
+    jira_url = os.getenv("JIRA_INSTANCE_URL")
+    jira_email = os.getenv("JIRA_EMAIL")
+    jira_api_key = os.getenv("JIRA_API_KEY")
+
+    if not all([jira_url, jira_email, jira_api_key]):
+        return {"status": "error", "error_message": "Jira configuration missing."}
+
+    if time_field not in ['created', 'updated']:
+        return {"status": "error", "error_message": "Invalid time_field. Must be 'created' or 'updated'."}
+    if not start_time and not end_time:
+        return {"status": "error", "error_message": "At least start_time or end_time must be provided."}
+
+    # Basic format validation (does not check date validity)
+    time_format_pattern = r"^\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?$"
+    import re # Import re locally for this check
+    if start_time and not re.match(time_format_pattern, start_time):
+        return {"status": "error", "error_message": "Invalid start_time format. Use 'YYYY-MM-DD' or 'YYYY-MM-DD HH:mm'."}
+    if end_time and not re.match(time_format_pattern, end_time):
+        return {"status": "error", "error_message": "Invalid end_time format. Use 'YYYY-MM-DD' or 'YYYY-MM-DD HH:mm'."}
+
+    # Construct JQL
+    jql_parts = []
+    if start_time:
+        jql_parts.append(f"{time_field} >= '{start_time}'")
+    if end_time:
+        jql_parts.append(f"{time_field} <= '{end_time}'")
+    if additional_jql:
+        jql_parts.append(f"({additional_jql})") # Wrap additional JQL in parentheses
+
+    jql = " AND ".join(jql_parts)
+    jql += " ORDER BY updated DESC" # Order by most recently updated by default
+
+    api_url = f"{jira_url.rstrip('/')}/rest/api/3/search"
+    auth = (jira_email, jira_api_key)
+    headers = {"Accept": "application/json", "Content-Type": "application/json"}
+    payload = {
+        "jql": jql,
+        "maxResults": max_results,
+        "fields": ["summary", "status", "created", "updated"] # Fields to retrieve
+    }
+
+    try:
+        response = requests.post(
+            api_url, headers=headers, auth=auth, data=json.dumps(payload), timeout=30
+        )
+        response.raise_for_status()
+
+        data = response.json()
+        issues = data.get("issues", [])
+
+        if not issues:
+            return {"status": "success", "report": f"No issues found matching the criteria:\nJQL: {jql}"}
+
+        report_lines = [f"Found {len(issues)} issue(s) matching criteria (JQL: {jql}):"]
+        for issue in issues:
+            key = issue.get("key", "N/A")
+            fields = issue.get("fields", {})
+            summary = fields.get("summary", "N/A")
+            status = fields.get("status", {}).get("name", "N/A")
+            created_ts = fields.get("created", "N/A")
+            updated_ts = fields.get("updated", "N/A")
+            report_lines.append(f"  - Key: {key}, Status: {status}, Created: {created_ts}, Updated: {updated_ts}, Summary: {summary}")
+
+        return {"status": "success", "report": "\n".join(report_lines)}
+
+    except requests.exceptions.HTTPError as http_err:
+        error_message = f"HTTP error searching issues: {http_err}"
+        try:
+            error_details = response.json()
+            if "errorMessages" in error_details: error_message += f" Details: {'; '.join(error_details['errorMessages'])}"
+            if "errors" in error_details: error_message += f" Field Errors: {json.dumps(error_details['errors'])}"
+        except json.JSONDecodeError: pass
+        if response.status_code == 400: error_message += f"\nCheck JQL syntax: {jql}"
+        return {"status": "error", "error_message": error_message}
+    except requests.exceptions.RequestException as req_err:
+        return {"status": "error", "error_message": f"Error searching issues: {req_err}"}
+
+
+__all__ = [
+    # Sub-task tools
+    'create_jira_subtask',
+    'get_jira_subtasks',
+    'delete_jira_issue', # Note: Also deletes sub-tasks
+    # General issue tools
+    'show_jira_issue',
+    'update_jira_issue',
+    'get_jira_transitions',
+    'transition_jira_issue',
+    'add_jira_comment',
+    'get_jira_comments',
+    'get_jira_issue_details',
+    'search_jira_issues_by_time', # Added time search tool
+]
+
 
 def get_jira_transitions(issue_id: str) -> dict:
     """Retrieves available workflow transitions for a specified Jira issue.
