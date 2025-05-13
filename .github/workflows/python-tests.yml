@@ -1,0 +1,37 @@
+name: Python Unit Tests
+
+# Controls when the workflow will run
+on:
+  push: # Run on pushes
+    branches: 
+      - main # Only run for pushes to the main branch
+
+jobs:
+  test:
+    runs-on: ubuntu-latest # Use the latest Ubuntu runner
+
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11"] # Test against multiple Python versions
+
+    steps:
+    - name: Check out repository code
+      uses: actions/checkout@v4 # Fetches your code
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run tests
+      run: |
+        python -m unittest discover -v
+        # This command assumes your 'tests' directory is at the root
+        # and contains __init__.py files for proper discovery.
+        # If you need to specify the tests directory:
+        # python -m unittest discover -v -s tests
