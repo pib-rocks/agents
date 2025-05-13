@@ -29,7 +29,7 @@ from .vector_storage.test_cases import (
     delete_test_case,
     get_all_test_cases,
 )
-
+#AI! Add a new function to purge all content of the vector storage and make it available to the Product-Owner
 # Export public functions
 __all__ = [
     # Requirement Functions
