@@ -218,7 +218,7 @@ def update_requirement(requirement_id: str, new_requirement_text: Optional[str] 
         return {"status": "error", "error_message": f"Failed to upsert requirement '{requirement_id}': {e}"}
 
 
-def delete_requirement(requirement_id: str) -> Dict:
+def delete_requirement(requirement_id: str) -> Dict: #AI! Change the delete_requirement-function, so that it accepts a list of requirement-ids instead of a single value and deltes them in on function-call
     """Deletes a requirement from the vector database by its ID."""
     if not requirement_id:
         return {"status": "error", "error_message": "Requirement ID cannot be empty."}
