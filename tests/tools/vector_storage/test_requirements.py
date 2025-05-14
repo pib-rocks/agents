@@ -409,7 +409,7 @@ class TestUpdateRequirement(unittest.TestCase):
             'metadatas': [self.original_metadata]
         }
         new_classification = "Non-Functional"
-        new_metadata_input = {"classification": new_classification, "source": "original_source", "implementation_status": "Open"} # provide other existing fields
+        new_metadata_input = {"type": "Requirement", "classification": new_classification, "source": "original_source", "implementation_status": "Open"} # provide other existing fields
         new_metadata_json = json.dumps(new_metadata_input)
 
         # --- Act ---
@@ -448,7 +448,7 @@ class TestUpdateRequirement(unittest.TestCase):
             'metadatas': [self.original_metadata] # Original had "Functional"
         }
         # New metadata intentionally omits 'classification'
-        new_metadata_input = {"source": "updated_source", "implementation_status": "In Progress"}
+        new_metadata_input = {"type": "Requirement", "source": "updated_source", "implementation_status": "In Progress"}
         new_metadata_json = json.dumps(new_metadata_input)
 
         # --- Act ---
@@ -507,7 +507,7 @@ class TestUpdateRequirement(unittest.TestCase):
         new_text = "Updated requirement text for classification test."
         new_classification = "Business"
         # Provide minimal metadata, other fields should be handled by the function (type, default classification if not this one)
-        new_metadata_input = {"classification": new_classification, "source_jira_ticket": "NEW-TICKET"}
+        new_metadata_input = {"type": "Requirement", "classification": new_classification, "source_jira_ticket": "NEW-TICKET"}
         new_metadata_json = json.dumps(new_metadata_input)
 
         # --- Act ---
