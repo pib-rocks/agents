@@ -71,7 +71,7 @@ def _get_initial_tool_descriptions() -> Dict[str, Dict[str, str]]:
         }
     }
 
-def populate_initial_descriptions():
+def populate_initial_descriptions():#AI! Change the descriptions in this module to english
     """Befüllt die Datenbank mit den initialen Werkzeugbeschreibungen, falls noch nicht vorhanden."""
     conn = _get_db_connection()
     try:
