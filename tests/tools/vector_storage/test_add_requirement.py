@@ -34,7 +34,7 @@ class TestAddRequirement(unittest.TestCase):
         mock_get_next_id.assert_called_once_with("REQ-")
         expected_metadata = {
             'type': 'Requirement', 
-            'implementation_status': DEFAULT_IMPLEMENTATION_STATUS, # Default status
+            'implementation_status': DEFAULT_IMPLEMENTATION_STATUS, # Corrected: Added default status
             'change_date': iso_fixed_timestamp 
         }
         mock_collection.upsert.assert_called_once_with(
@@ -51,6 +51,7 @@ class TestAddRequirement(unittest.TestCase):
 
         mock_get_next_id.return_value = "REQ-2"
         requirement_text = "Users must be able to reset their passwords."
+        # This input provides "implementation_status"
         metadata_input = {"priority": "High", "source_jira_ticket": "XYZ-123", "implementation_status": "In Progress"}
         metadata_json_input = json.dumps(metadata_input)
 
@@ -65,7 +66,7 @@ class TestAddRequirement(unittest.TestCase):
         expected_metadata = {
             "priority": "High",
             "source_jira_ticket": "XYZ-123",
-            "implementation_status": "In Progress",
+            "implementation_status": "In Progress", # Corrected: Expect provided status
             'type': 'Requirement', 
             'change_date': iso_fixed_timestamp 
         }
@@ -94,7 +95,7 @@ class TestAddRequirement(unittest.TestCase):
 
         expected_metadata = {
             'type': 'Requirement',
-            'implementation_status': DEFAULT_IMPLEMENTATION_STATUS, # Default status
+            'implementation_status': DEFAULT_IMPLEMENTATION_STATUS, # Corrected: Added default status
             'change_date': iso_fixed_timestamp
         }
         mock_collection.upsert.assert_called_once_with(
@@ -176,7 +177,7 @@ class TestAddRequirement(unittest.TestCase):
         expected_metadata = {
             "details": "Test with non-ASCII: éàçüö, and quotes: \"example\"",
             'type': 'Requirement',
-            'implementation_status': DEFAULT_IMPLEMENTATION_STATUS, # Default status
+            'implementation_status': DEFAULT_IMPLEMENTATION_STATUS, # Corrected: Added default status
             'change_date': iso_fixed_timestamp
         }
         mock_collection.upsert.assert_called_once_with(
@@ -206,7 +207,7 @@ class TestAddRequirement(unittest.TestCase):
         expected_metadata = {
             "type": "Requirement", 
             "source": "Planning meeting",
-            'implementation_status': DEFAULT_IMPLEMENTATION_STATUS, # Default status
+            'implementation_status': DEFAULT_IMPLEMENTATION_STATUS, # Corrected: Added default status
             'change_date': iso_fixed_timestamp
         }
         mock_collection.upsert.assert_called_once_with(
@@ -277,13 +278,15 @@ class TestAddRequirement(unittest.TestCase):
         fixed_timestamp = datetime.datetime(2023, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc)
         mock_datetime_module.datetime.now.return_value = fixed_timestamp
         iso_fixed_timestamp = fixed_timestamp.isoformat()
-        mock_get_next_id.return_value = "REQ-VALID-STATUS"
+        mock_get_next_id.return_value = "REQ-VALID-STATUS" # Initial value, will be reset
         requirement_text = "Requirement with valid status."
         
         for valid_status in ALLOWED_IMPLEMENTATION_STATUSES:
             mock_collection.reset_mock() # Reset for each iteration
-            mock_get_next_id.reset_mock()
-            mock_get_next_id.return_value = f"REQ-{valid_status.replace(' ', '')}"
+            mock_get_next_id.reset_mock() # Reset for each iteration
+            # Ensure a unique ID for each iteration to avoid issues if tests run in parallel or state leaks
+            current_req_id = f"REQ-{valid_status.replace(' ', '')}"
+            mock_get_next_id.return_value = current_req_id
             
             metadata_input = {"implementation_status": valid_status}
             result = add_requirement(requirement_text=requirement_text, metadata_json=json.dumps(metadata_input))
