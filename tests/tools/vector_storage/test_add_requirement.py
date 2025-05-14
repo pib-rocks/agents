@@ -34,7 +34,7 @@ class TestAddRequirement(unittest.TestCase):
         mock_get_next_id.assert_called_once_with("REQ-")
         expected_metadata = {
             'type': 'Requirement', 
-            'implementation_status': DEFAULT_IMPLEMENTATION_STATUS, # Corrected: Added default status
+            'implementation_status': DEFAULT_IMPLEMENTATION_STATUS, # Corrected
             'change_date': iso_fixed_timestamp 
         }
         mock_collection.upsert.assert_called_once_with(
@@ -66,7 +66,7 @@ class TestAddRequirement(unittest.TestCase):
         expected_metadata = {
             "priority": "High",
             "source_jira_ticket": "XYZ-123",
-            "implementation_status": "In Progress", # Corrected: Expect provided status
+            "implementation_status": "In Progress", # Expect provided status
             'type': 'Requirement', 
             'change_date': iso_fixed_timestamp 
         }
@@ -95,7 +95,7 @@ class TestAddRequirement(unittest.TestCase):
 
         expected_metadata = {
             'type': 'Requirement',
-            'implementation_status': DEFAULT_IMPLEMENTATION_STATUS, # Corrected: Added default status
+            'implementation_status': DEFAULT_IMPLEMENTATION_STATUS, # Corrected
             'change_date': iso_fixed_timestamp
         }
         mock_collection.upsert.assert_called_once_with(
@@ -177,7 +177,7 @@ class TestAddRequirement(unittest.TestCase):
         expected_metadata = {
             "details": "Test with non-ASCII: éàçüö, and quotes: \"example\"",
             'type': 'Requirement',
-            'implementation_status': DEFAULT_IMPLEMENTATION_STATUS, # Corrected: Added default status
+            'implementation_status': DEFAULT_IMPLEMENTATION_STATUS, # Corrected
             'change_date': iso_fixed_timestamp
         }
         mock_collection.upsert.assert_called_once_with(
@@ -207,7 +207,7 @@ class TestAddRequirement(unittest.TestCase):
         expected_metadata = {
             "type": "Requirement", 
             "source": "Planning meeting",
-            'implementation_status': DEFAULT_IMPLEMENTATION_STATUS, # Corrected: Added default status
+            'implementation_status': DEFAULT_IMPLEMENTATION_STATUS, # Corrected
             'change_date': iso_fixed_timestamp
         }
         mock_collection.upsert.assert_called_once_with(
