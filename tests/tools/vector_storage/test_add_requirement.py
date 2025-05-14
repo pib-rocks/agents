@@ -2,9 +2,16 @@ import unittest
 from unittest.mock import patch, MagicMock
 import json
 import datetime # Used for creating expected datetime objects/strings
+import sys
+import os
+
+# Fügt das Projektstammverzeichnis zum Python-Pfad hinzu
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
 # Module to test
-from tools.vector_storage.requirements import add_requirement, ALLOWED_IMPLEMENTATION_STATUSES, DEFAULT_IMPLEMENTATION_STATUS
+from tools.vector_storage.requirements import add_requirement, ALLOWED_IMPLEMENTATION_STATUSES, DEFAULT_IMPLEMENTATION_STATUS, DEFAULT_CLASSIFICATION
 
 # Patching at class level: these mocks will be passed as arguments to each test method.
 # The order of decorators is bottom-up, so the arguments to test methods will be:
@@ -34,7 +41,8 @@ class TestAddRequirement(unittest.TestCase):
         mock_get_next_id.assert_called_once_with("REQ-")
         expected_metadata = {
             'type': 'Requirement', 
-            'implementation_status': DEFAULT_IMPLEMENTATION_STATUS, # Corrected
+            'implementation_status': DEFAULT_IMPLEMENTATION_STATUS,
+            'classification': DEFAULT_CLASSIFICATION,
             'change_date': iso_fixed_timestamp 
         }
         mock_collection.upsert.assert_called_once_with(
@@ -67,6 +75,7 @@ class TestAddRequirement(unittest.TestCase):
             "priority": "High",
             "source_jira_ticket": "XYZ-123",
             "implementation_status": "In Progress", # Expect provided status
+            'classification': DEFAULT_CLASSIFICATION, # Defaults as not provided in input
             'type': 'Requirement', 
             'change_date': iso_fixed_timestamp 
         }
@@ -95,7 +104,8 @@ class TestAddRequirement(unittest.TestCase):
 
         expected_metadata = {
             'type': 'Requirement',
-            'implementation_status': DEFAULT_IMPLEMENTATION_STATUS, # Corrected
+            'implementation_status': DEFAULT_IMPLEMENTATION_STATUS,
+            'classification': DEFAULT_CLASSIFICATION,
             'change_date': iso_fixed_timestamp
         }
         mock_collection.upsert.assert_called_once_with(
@@ -177,7 +187,8 @@ class TestAddRequirement(unittest.TestCase):
         expected_metadata = {
             "details": "Test with non-ASCII: éàçüö, and quotes: \"example\"",
             'type': 'Requirement',
-            'implementation_status': DEFAULT_IMPLEMENTATION_STATUS, # Corrected
+            'implementation_status': DEFAULT_IMPLEMENTATION_STATUS,
+            'classification': DEFAULT_CLASSIFICATION,
             'change_date': iso_fixed_timestamp
         }
         mock_collection.upsert.assert_called_once_with(
@@ -207,7 +218,8 @@ class TestAddRequirement(unittest.TestCase):
         expected_metadata = {
             "type": "Requirement", 
             "source": "Planning meeting",
-            'implementation_status': DEFAULT_IMPLEMENTATION_STATUS, # Corrected
+            'implementation_status': DEFAULT_IMPLEMENTATION_STATUS,
+            'classification': DEFAULT_CLASSIFICATION,
             'change_date': iso_fixed_timestamp
         }
         mock_collection.upsert.assert_called_once_with(
@@ -260,6 +272,7 @@ class TestAddRequirement(unittest.TestCase):
         self.assertEqual(result1['status'], "success")
         args1, kwargs1 = mock_collection.upsert.call_args_list[0]
         self.assertEqual(kwargs1['metadatas'][0]['implementation_status'], DEFAULT_IMPLEMENTATION_STATUS)
+        self.assertEqual(kwargs1['metadatas'][0]['classification'], DEFAULT_CLASSIFICATION)
         
         mock_collection.reset_mock() # Reset for next call
         mock_get_next_id.reset_mock()
@@ -271,8 +284,11 @@ class TestAddRequirement(unittest.TestCase):
         self.assertEqual(result2['status'], "success")
         args2, kwargs2 = mock_collection.upsert.call_args_list[0]
         self.assertEqual(kwargs2['metadatas'][0]['implementation_status'], DEFAULT_IMPLEMENTATION_STATUS)
+        self.assertEqual(kwargs2['metadatas'][0]['classification'], DEFAULT_CLASSIFICATION)
         self.assertEqual(kwargs2['metadatas'][0]['source'], "test_source")
 
+    # Tests for classification (similar to those in test_requirements.py) should be added here
+    # if this file is to be maintained separately. For now, focusing on fixing existing tests.
 
     def test_add_requirement_with_valid_implementation_status(self, mock_collection, mock_get_next_id, mock_datetime_module):
         fixed_timestamp = datetime.datetime(2023, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc)
@@ -294,11 +310,12 @@ class TestAddRequirement(unittest.TestCase):
             self.assertEqual(result['status'], "success", f"Failed for status: {valid_status}")
             args, kwargs = mock_collection.upsert.call_args
             self.assertEqual(kwargs['metadatas'][0]['implementation_status'], valid_status)
+            self.assertEqual(kwargs['metadatas'][0]['classification'], DEFAULT_CLASSIFICATION) # Should still default
             self.assertEqual(kwargs['metadatas'][0]['type'], 'Requirement')
             self.assertEqual(kwargs['metadatas'][0]['change_date'], iso_fixed_timestamp)
 
     def test_add_requirement_with_invalid_implementation_status(self, mock_collection, mock_get_next_id, mock_datetime_module):
-        mock_get_next_id.return_value = "REQ-INVALID-STATUS"
+        mock_get_next_id.return_value = "REQ-INVALID-STATUS" # ID will be generated before validation
         requirement_text = "Requirement with invalid status."
         invalid_status = "DefinitelyNotAllowed"
         metadata_input = {"implementation_status": invalid_status}
@@ -311,6 +328,7 @@ class TestAddRequirement(unittest.TestCase):
             f"Invalid implementation_status '{invalid_status}'. Must be one of {ALLOWED_IMPLEMENTATION_STATUSES}."
         )
         mock_collection.upsert.assert_not_called()
+        mock_get_next_id.assert_called_once_with("REQ-") # Ensure ID generation was attempted
 
 if __name__ == '__main__':
     unittest.main(argv=['first-arg-is-ignored'], exit=False)

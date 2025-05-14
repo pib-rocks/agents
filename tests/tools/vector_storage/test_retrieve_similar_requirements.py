@@ -2,8 +2,15 @@ import unittest
 from unittest.mock import patch, MagicMock
 import json
 import datetime
+import sys
+import os
 
-from tools.vector_storage.requirements import retrieve_similar_requirements
+# Fügt das Projektstammverzeichnis zum Python-Pfad hinzu
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+from tools.vector_storage.requirements import retrieve_similar_requirements, DEFAULT_CLASSIFICATION
 
 @patch('tools.vector_storage.requirements.datetime')
 @patch('tools.vector_storage.requirements._get_next_id') # Not used by retrieve_similar_requirements, but kept for consistency
@@ -15,7 +22,10 @@ class TestRetrieveSimilarRequirements(unittest.TestCase):
             'ids': [['REQ-1', 'REQ-2']],
             'documents': [['Doc 1', 'Doc 2']],
             'distances': [[0.1, 0.2]],
-            'metadatas': [[{'type': 'Requirement', 'key': 'val1'}, {'type': 'Requirement', 'key': 'val2'}]]
+            'metadatas': [
+                [{'type': 'Requirement', 'key': 'val1', 'classification': DEFAULT_CLASSIFICATION, 'implementation_status': 'Open', 'change_date': '...'}, 
+                 {'type': 'Requirement', 'key': 'val2', 'classification': DEFAULT_CLASSIFICATION, 'implementation_status': 'Open', 'change_date': '...'}]
+            ]
         }
         query_text = "find similar docs"
         result = retrieve_similar_requirements(query_text=query_text, n_results=2)

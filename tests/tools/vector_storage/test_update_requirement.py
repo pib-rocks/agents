@@ -2,8 +2,15 @@ import unittest
 from unittest.mock import patch, MagicMock
 import json
 import datetime
+import sys
+import os
 
-from tools.vector_storage.requirements import update_requirement, ALLOWED_IMPLEMENTATION_STATUSES, DEFAULT_IMPLEMENTATION_STATUS
+# Fügt das Projektstammverzeichnis zum Python-Pfad hinzu
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+from tools.vector_storage.requirements import update_requirement, ALLOWED_IMPLEMENTATION_STATUSES, DEFAULT_IMPLEMENTATION_STATUS, ALLOWED_CLASSIFICATIONS, DEFAULT_CLASSIFICATION
 
 @patch('tools.vector_storage.requirements.datetime')
 @patch('tools.vector_storage.requirements._get_next_id') # Not used by update_requirement
@@ -13,7 +20,7 @@ class TestUpdateRequirement(unittest.TestCase):
     def test_update_requirement_text_only(self, mock_collection, mock_get_next_id, mock_datetime_module):
         req_id = "REQ-10"
         original_doc = "Original text"
-        original_meta = {"type": "Requirement", "source": "test", "implementation_status": "Open"}
+        original_meta = {"type": "Requirement", "source": "test", "implementation_status": "Open", "classification": "Functional"}
         new_text = "Updated requirement text"
         fixed_timestamp = datetime.datetime(2023, 2, 1, 10, 0, 0, tzinfo=datetime.timezone.utc)
         mock_datetime_module.datetime.now.return_value = fixed_timestamp
@@ -36,9 +43,9 @@ class TestUpdateRequirement(unittest.TestCase):
     def test_update_requirement_metadata_only(self, mock_collection, mock_get_next_id, mock_datetime_module):
         req_id = "REQ-11"
         original_doc = "Some document text"
-        original_meta = {"type": "Requirement", "source": "old_source", "implementation_status": "Open"}
+        original_meta = {"type": "Requirement", "source": "old_source", "implementation_status": "Open", "classification": "Functional"}
         # new_metadata_json will replace the entire metadata
-        new_meta_dict = {"type": "Requirement", "source": "new_source", "priority": "High", "implementation_status": "In Progress"}
+        new_meta_dict = {"type": "Requirement", "source": "new_source", "priority": "High", "implementation_status": "In Progress"} # No classification, should default
         new_meta_json = json.dumps(new_meta_dict)
         
         fixed_timestamp = datetime.datetime(2023, 2, 2, 11, 0, 0, tzinfo=datetime.timezone.utc)
@@ -52,6 +59,7 @@ class TestUpdateRequirement(unittest.TestCase):
         self.assertEqual(result['status'], "success")
         self.assertIn("updated successfully (metadata)", result['report'])
         expected_meta_updated = new_meta_dict.copy()
+        expected_meta_updated['classification'] = DEFAULT_CLASSIFICATION # Should default
         expected_meta_updated['change_date'] = iso_fixed_timestamp
         mock_collection.upsert.assert_called_once_with(
             ids=[req_id],
@@ -62,9 +70,9 @@ class TestUpdateRequirement(unittest.TestCase):
     def test_update_requirement_text_and_metadata(self, mock_collection, mock_get_next_id, mock_datetime_module):
         req_id = "REQ-12"
         original_doc_text = "old text" 
-        original_meta = {"type": "Requirement", "implementation_status": "Open"} 
+        original_meta = {"type": "Requirement", "implementation_status": "Open", "classification": "Functional"} 
         new_text = "Completely new text"
-        new_meta_dict = {"type": "Requirement", "status": "approved", "implementation_status": "Done"}
+        new_meta_dict = {"type": "Requirement", "status": "approved", "implementation_status": "Done"} # No classification, should default
         new_meta_json = json.dumps(new_meta_dict)
         
         fixed_timestamp = datetime.datetime(2023, 2, 3, 12, 0, 0, tzinfo=datetime.timezone.utc)
@@ -78,6 +86,7 @@ class TestUpdateRequirement(unittest.TestCase):
         self.assertEqual(result['status'], "success")
         self.assertIn("updated successfully (text, metadata)", result['report'])
         expected_meta_updated = new_meta_dict.copy()
+        expected_meta_updated['classification'] = DEFAULT_CLASSIFICATION # Should default
         expected_meta_updated['change_date'] = iso_fixed_timestamp
         mock_collection.upsert.assert_called_once_with(
             ids=[req_id],
@@ -109,19 +118,19 @@ class TestUpdateRequirement(unittest.TestCase):
         self.assertEqual(result['error_message'], "Must provide either new text or new metadata to update.")
 
     def test_update_requirement_empty_new_text(self, mock_collection, mock_get_next_id, mock_datetime_module):
-        mock_collection.get.return_value = {'ids': ["REQ-1"], 'documents': ["old"], 'metadatas': [{"type": "Requirement", "implementation_status": "Open"}]}
+        mock_collection.get.return_value = {'ids': ["REQ-1"], 'documents': ["old"], 'metadatas': [{"type": "Requirement", "implementation_status": "Open", "classification": "Functional"}]}
         result = update_requirement(requirement_id="REQ-1", new_requirement_text="   ")
         self.assertEqual(result['status'], "error")
         self.assertEqual(result['error_message'], "New requirement text cannot be empty.")
 
     def test_update_requirement_invalid_new_metadata_json(self, mock_collection, mock_get_next_id, mock_datetime_module):
-        mock_collection.get.return_value = {'ids': ["REQ-1"], 'documents': ["old"], 'metadatas': [{"type": "Requirement", "implementation_status": "Open"}]}
+        mock_collection.get.return_value = {'ids': ["REQ-1"], 'documents': ["old"], 'metadatas': [{"type": "Requirement", "implementation_status": "Open", "classification": "Functional"}]}
         result = update_requirement(requirement_id="REQ-1", new_metadata_json="not json")
         self.assertEqual(result['status'], "error")
         self.assertEqual(result['error_message'], "Invalid JSON format provided for new metadata.")
 
     def test_update_requirement_new_metadata_json_not_dict(self, mock_collection, mock_get_next_id, mock_datetime_module):
-        mock_collection.get.return_value = {'ids': ["REQ-1"], 'documents': ["old"], 'metadatas': [{"type": "Requirement", "implementation_status": "Open"}]}
+        mock_collection.get.return_value = {'ids': ["REQ-1"], 'documents': ["old"], 'metadatas': [{"type": "Requirement", "implementation_status": "Open", "classification": "Functional"}]}
         result = update_requirement(requirement_id="REQ-1", new_metadata_json='["list"]')
         self.assertEqual(result['status'], "error")
         self.assertEqual(result['error_message'], "New metadata must be a JSON object (dictionary).")
@@ -130,7 +139,7 @@ class TestUpdateRequirement(unittest.TestCase):
     def test_update_requirement_metadata_new_type_is_set_if_missing(self, mock_print, mock_collection, mock_get_next_id, mock_datetime_module):
         req_id = "REQ-13"
         doc_content = "doc" 
-        original_meta = {"type": "Requirement", "implementation_status": "Open"} 
+        original_meta = {"type": "Requirement", "implementation_status": "Open", "classification": "Functional"} 
         fixed_timestamp = datetime.datetime(2023, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc)
         mock_datetime_module.datetime.now.return_value = fixed_timestamp
         iso_fixed_timestamp = fixed_timestamp.isoformat()
@@ -138,35 +147,36 @@ class TestUpdateRequirement(unittest.TestCase):
         
         # new_metadata_json is empty, so 'type' will be missing, and 'implementation_status' will be missing
         # The function should default 'type' to 'Requirement'.
-        # Since 'implementation_status' is not in new_metadata_json, it won't be validated or changed by the new logic.
-        # The existing 'implementation_status' from original_meta will be wiped because new_metadata_json replaces entirely.
-        new_metadata_dict = {}
+        # 'classification' will default to 'Functional' as it's not in new_metadata_dict.
+        # 'implementation_status' from original_meta will be wiped because new_metadata_json replaces entirely.
+        new_metadata_dict = {} # type will be added by the function, classification will default
         result = update_requirement(requirement_id=req_id, new_metadata_json=json.dumps(new_metadata_dict)) 
         
         self.assertEqual(result['status'], "success") 
         mock_print.assert_called_once_with(f"Warning: Updating metadata for '{req_id}' without a 'type' field. Setting to 'Requirement'.")
-        # Expected metadata will have 'type' defaulted, and no 'implementation_status' as it wasn't in new_metadata_dict
-        expected_meta = {'type': 'Requirement', 'change_date': iso_fixed_timestamp}
+        # Expected metadata will have 'type' defaulted, and 'classification' defaulted.
+        expected_meta = {'type': 'Requirement', 'classification': DEFAULT_CLASSIFICATION, 'change_date': iso_fixed_timestamp}
         mock_collection.upsert.assert_called_once_with(ids=[req_id], documents=[doc_content], metadatas=[expected_meta])
 
     @patch('builtins.print')
     def test_update_requirement_metadata_new_type_is_different(self, mock_print, mock_collection, mock_get_next_id, mock_datetime_module):
         req_id = "REQ-14"
         doc_content = "doc" 
-        original_meta = {"type": "Requirement", "implementation_status": "Open"} 
+        original_meta = {"type": "Requirement", "implementation_status": "Open", "classification": "Functional"} 
         fixed_timestamp = datetime.datetime(2023, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc)
         mock_datetime_module.datetime.now.return_value = fixed_timestamp
         iso_fixed_timestamp = fixed_timestamp.isoformat()
         mock_collection.get.return_value = {'ids': [req_id], 'documents': [doc_content], 'metadatas': [original_meta]}
         
         # new_metadata_json has a different 'type', and no 'implementation_status'.
+        # 'classification' will default to 'Functional'.
         # The 'implementation_status' from original_meta will be wiped.
-        new_metadata_dict = {"type": "OtherType"}
+        new_metadata_dict = {"type": "OtherType"} # classification will default
         result = update_requirement(requirement_id=req_id, new_metadata_json=json.dumps(new_metadata_dict))
 
         self.assertEqual(result['status'], "success") 
         mock_print.assert_called_once_with(f"Warning: Updating metadata for '{req_id}' with a type other than 'Requirement' ('OtherType').")
-        expected_meta = {'type': 'OtherType', 'change_date': iso_fixed_timestamp}
+        expected_meta = {'type': 'OtherType', 'classification': DEFAULT_CLASSIFICATION, 'change_date': iso_fixed_timestamp}
         mock_collection.upsert.assert_called_once_with(ids=[req_id], documents=[doc_content], metadatas=[expected_meta])
 
     def test_update_requirement_collection_get_exception(self, mock_collection, mock_get_next_id, mock_datetime_module):
@@ -176,7 +186,7 @@ class TestUpdateRequirement(unittest.TestCase):
         self.assertIn("Error retrieving requirement 'REQ-1': DB GET error", result['error_message'])
 
     def test_update_requirement_collection_upsert_exception(self, mock_collection, mock_get_next_id, mock_datetime_module):
-        mock_collection.get.return_value = {'ids': ["REQ-1"], 'documents': ["old"], 'metadatas': [{"type": "Requirement", "implementation_status": "Open"}]}
+        mock_collection.get.return_value = {'ids': ["REQ-1"], 'documents': ["old"], 'metadatas': [{"type": "Requirement", "implementation_status": "Open", "classification": "Functional"}]}
         mock_collection.upsert.side_effect = Exception("DB UPSERT error")
         result = update_requirement(requirement_id="REQ-1", new_requirement_text="text")
         self.assertEqual(result['status'], "error")
@@ -185,7 +195,7 @@ class TestUpdateRequirement(unittest.TestCase):
     def test_update_requirement_to_valid_implementation_status(self, mock_collection, mock_get_next_id, mock_datetime_module):
         req_id = "REQ-STATUS-VALID"
         original_doc = "Doc for status update"
-        original_meta = {"type": "Requirement", "implementation_status": "Open"}
+        original_meta = {"type": "Requirement", "implementation_status": "Open", "classification": "Functional"}
         fixed_timestamp = datetime.datetime(2023, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc)
         mock_datetime_module.datetime.now.return_value = fixed_timestamp
         iso_fixed_timestamp = fixed_timestamp.isoformat()
@@ -195,11 +205,12 @@ class TestUpdateRequirement(unittest.TestCase):
         for valid_status in ALLOWED_IMPLEMENTATION_STATUSES:
             mock_collection.upsert.reset_mock() # Reset for each iteration
             
-            new_metadata_dict = {"implementation_status": valid_status, "type": "Requirement"} # Must include type
+            new_metadata_dict = {"implementation_status": valid_status, "type": "Requirement"} # classification will default
             result = update_requirement(requirement_id=req_id, new_metadata_json=json.dumps(new_metadata_dict))
             
             self.assertEqual(result['status'], "success", f"Failed for status: {valid_status}")
             expected_meta = new_metadata_dict.copy()
+            expected_meta['classification'] = DEFAULT_CLASSIFICATION # Should default
             expected_meta['change_date'] = iso_fixed_timestamp
             mock_collection.upsert.assert_called_once_with(
                 ids=[req_id],
@@ -210,12 +221,12 @@ class TestUpdateRequirement(unittest.TestCase):
     def test_update_requirement_to_invalid_implementation_status(self, mock_collection, mock_get_next_id, mock_datetime_module):
         req_id = "REQ-STATUS-INVALID"
         original_doc = "Doc for invalid status update"
-        original_meta = {"type": "Requirement", "implementation_status": "Open"}
+        original_meta = {"type": "Requirement", "implementation_status": "Open", "classification": "Functional"}
         invalid_status = "DefinitelyNotAllowed"
         
         mock_collection.get.return_value = {'ids': [req_id], 'documents': [original_doc], 'metadatas': [original_meta]}
         
-        new_metadata_dict = {"implementation_status": invalid_status}
+        new_metadata_dict = {"implementation_status": invalid_status, "type": "Requirement"} # type is needed for validation to pass before status check
         result = update_requirement(requirement_id=req_id, new_metadata_json=json.dumps(new_metadata_dict))
         
         self.assertEqual(result['status'], "error")
@@ -228,15 +239,16 @@ class TestUpdateRequirement(unittest.TestCase):
     def test_update_requirement_metadata_removes_status_if_not_in_new_json(self, mock_collection, mock_get_next_id, mock_datetime_module):
         req_id = "REQ-REMOVE-STATUS"
         original_doc = "Doc for status removal"
-        original_meta = {"type": "Requirement", "implementation_status": "Open", "source": "A"}
+        original_meta = {"type": "Requirement", "implementation_status": "Open", "source": "A", "classification": "Functional"}
         fixed_timestamp = datetime.datetime(2023, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc)
         mock_datetime_module.datetime.now.return_value = fixed_timestamp
         iso_fixed_timestamp = fixed_timestamp.isoformat()
         
         mock_collection.get.return_value = {'ids': [req_id], 'documents': [original_doc], 'metadatas': [original_meta]}
 
-        # New metadata only contains 'source', 'type' will be defaulted. 'implementation_status' should be gone.
-        new_metadata_dict = {"source": "B"} 
+        # New metadata only contains 'source' and 'type'. 'implementation_status' should be gone.
+        # 'classification' will default.
+        new_metadata_dict = {"source": "B", "type": "Requirement"} 
         result = update_requirement(requirement_id=req_id, new_metadata_json=json.dumps(new_metadata_dict))
         
         self.assertEqual(result['status'], "success")
@@ -245,7 +257,8 @@ class TestUpdateRequirement(unittest.TestCase):
         
         self.assertNotIn("implementation_status", updated_metadata)
         self.assertEqual(updated_metadata["source"], "B")
-        self.assertEqual(updated_metadata["type"], "Requirement") # Defaulted by the function
+        self.assertEqual(updated_metadata["type"], "Requirement")
+        self.assertEqual(updated_metadata["classification"], DEFAULT_CLASSIFICATION) # Should default
         self.assertEqual(updated_metadata["change_date"], iso_fixed_timestamp)
 
 
