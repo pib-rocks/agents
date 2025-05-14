@@ -8,6 +8,10 @@ from typing import List, Dict, Optional
 # Import shared components from the package initializer
 from . import client, collection, _get_next_id
 
+# Define allowed implementation statuses
+ALLOWED_IMPLEMENTATION_STATUSES = {"Open", "In Progress", "Done", "Deferred", "Blocked", "Unknown"}
+DEFAULT_IMPLEMENTATION_STATUS = "Open"
+
 # --- Requirement Functions ---
 def add_requirement(requirement_text: str, metadata_json: Optional[str] = None) -> Dict:
     """Adds a new software requirement to the vector database with an automatically generated ID.
@@ -16,10 +20,12 @@ def add_requirement(requirement_text: str, metadata_json: Optional[str] = None) 
         requirement_text (str): The full text of the requirement.
         metadata_json (Optional[str]): Optional JSON string representing metadata associated
                                        with the requirement. Based on requirement_schema.json,
-                                       this JSON object should contain keys like:
+                                       this JSON object can contain keys like:
                                        - "type" (str): Must be "Requirement".
-                                       - "source_jira_ticket" (str): The originating Jira ticket key (e.g., "PROJECT-123").
-                                       Example: '{ "type": "Requirement", "source_jira_ticket": "PROJECT-123" }'
+                                       - "source_jira_ticket" (str): The originating Jira ticket key.
+                                       - "implementation_status" (str): Must be one of ALLOWED_IMPLEMENTATION_STATUSES.
+                                                                        Defaults to "Open" if not provided.
+                                       Example: '{ "type": "Requirement", "source_jira_ticket": "PROJECT-123", "implementation_status": "Open" }'
 
     Returns:
         Dict: Status dictionary indicating success or error, including the generated requirement ID.
@@ -45,8 +51,17 @@ def add_requirement(requirement_text: str, metadata_json: Optional[str] = None) 
         except ValueError as ve:
              return {"status": "error", "error_message": str(ve)}
 
-    # You might want to add standard metadata fields automatically, e.g., timestamp
-    # parsed_metadata['last_updated'] = datetime.datetime.utcnow().isoformat()
+    # Validate and set implementation_status
+    current_status = parsed_metadata.get('implementation_status')
+    if current_status is not None:
+        if current_status not in ALLOWED_IMPLEMENTATION_STATUSES:
+            return {
+                "status": "error",
+                "error_message": f"Invalid implementation_status '{current_status}'. Must be one of {ALLOWED_IMPLEMENTATION_STATUSES}."
+            }
+    else:
+        parsed_metadata['implementation_status'] = DEFAULT_IMPLEMENTATION_STATUS
+
 
     # Ensure 'type' is set in metadata
     parsed_metadata['type'] = 'Requirement'
@@ -74,9 +89,9 @@ def retrieve_similar_requirements(query_text: str, n_results: int = 3, filter_me
         n_results (int): The maximum number of similar requirements to return. Defaults to 3.
         filter_metadata_json (Optional[str]): Optional JSON string representing a metadata dictionary
                                               to filter results based on the stored metadata fields
-                                              (e.g., "type", "source_jira_ticket").
+                                              (e.g., "type", "source_jira_ticket", "implementation_status").
                                               Example: To find requirements from a specific ticket:
-                                              '{"type": "Requirement", "source_jira_ticket": "PROJECT-123"}'
+                                              '{"type": "Requirement", "source_jira_ticket": "PROJECT-123", "implementation_status": "Open"}'
                                               Uses ChromaDB's 'where' filter format (see ChromaDB docs for operators like $in, $eq, etc.).
 
     Returns:
@@ -137,11 +152,12 @@ def update_requirement(requirement_id: str, new_requirement_text: Optional[str] 
         new_requirement_text (Optional[str]): The new text for the requirement. If None, text is not updated.
         new_metadata_json (Optional[str]): A JSON string representing the *complete* new metadata object.
                                            If provided, it *replaces* the existing metadata entirely.
+                                           If 'implementation_status' is included, it must be one of ALLOWED_IMPLEMENTATION_STATUSES.
                                            The structure of the metadata must be like this:
-
                                             {
-                                                "type": "Requirement", # Or other relevant fields like "functional"/"non-functional" if used
-                                                "source_jira_ticket": "PR-123"
+                                                "type": "Requirement",
+                                                "source_jira_ticket": "PR-123",
+                                                "implementation_status": "In Progress"
                                                 # Add other relevant metadata fields here
                                             }
 
@@ -180,23 +196,34 @@ def update_requirement(requirement_id: str, new_requirement_text: Optional[str] 
              return {"status": "error", "error_message": "New requirement text cannot be empty."}
         final_document_text = new_requirement_text
 
-    final_metadata = existing_metadata
+    final_metadata = existing_metadata # Start with existing metadata
     if new_metadata_json is not None:
         try:
             parsed_new_metadata = json.loads(new_metadata_json)
             if not isinstance(parsed_new_metadata, dict):
                 raise ValueError("New metadata must be a JSON object (dictionary).")
-            # Ensure the type remains correct
-            if 'type' not in parsed_new_metadata:
+
+            # Validate implementation_status if present in the new metadata
+            new_status = parsed_new_metadata.get('implementation_status')
+            if new_status is not None and new_status not in ALLOWED_IMPLEMENTATION_STATUSES:
+                return {
+                    "status": "error",
+                    "error_message": f"Invalid implementation_status '{new_status}'. Must be one of {ALLOWED_IMPLEMENTATION_STATUSES}."
+                }
+            
+            # Replace entire metadata as per function contract
+            final_metadata = parsed_new_metadata 
+
+            # Ensure the type remains correct or is defaulted
+            if 'type' not in final_metadata: # Check final_metadata after potential replacement
                  print(f"Warning: Updating metadata for '{requirement_id}' without a 'type' field. Setting to 'Requirement'.")
-                 parsed_new_metadata['type'] = 'Requirement'
-            elif parsed_new_metadata.get('type') != 'Requirement':
-                 print(f"Warning: Updating metadata for '{requirement_id}' with a type other than 'Requirement' ('{parsed_new_metadata.get('type')}').")
-            # Replace entire metadata
-            final_metadata = parsed_new_metadata
+                 final_metadata['type'] = 'Requirement'
+            elif final_metadata.get('type') != 'Requirement':
+                 print(f"Warning: Updating metadata for '{requirement_id}' with a type other than 'Requirement' ('{final_metadata.get('type')}').")
+        
         except json.JSONDecodeError:
             return {"status": "error", "error_message": "Invalid JSON format provided for new metadata."}
-        except ValueError as ve:
+        except ValueError as ve: # Catches the "New metadata must be a JSON object"
              return {"status": "error", "error_message": str(ve)}
 
     # Add/Update the change date before upserting
@@ -206,8 +233,8 @@ def update_requirement(requirement_id: str, new_requirement_text: Optional[str] 
     try:
         collection.upsert(
             ids=[requirement_id],
-            documents=[final_document_text], # Provide the final text
-            metadatas=[final_metadata]      # Provide the final metadata
+            documents=[final_document_text], 
+            metadatas=[final_metadata]      
         )
         update_fields = []
         if new_requirement_text is not None: update_fields.append("text")
