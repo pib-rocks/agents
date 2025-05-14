@@ -218,17 +218,34 @@ def update_requirement(requirement_id: str, new_requirement_text: Optional[str] 
         return {"status": "error", "error_message": f"Failed to upsert requirement '{requirement_id}': {e}"}
 
 
-def delete_requirement(requirement_id: str) -> Dict: #AI! Change the delete_requirement-function, so that it accepts a list of requirement-ids instead of a single value and deltes them in on function-call
-    """Deletes a requirement from the vector database by its ID."""
-    if not requirement_id:
-        return {"status": "error", "error_message": "Requirement ID cannot be empty."}
+def delete_requirement(requirement_ids: List[str]) -> Dict:
+    """Deletes one or more requirements from the vector database by their IDs.
+
+    Args:
+        requirement_ids (List[str]): A list of unique identifiers of the requirements to delete.
+
+    Returns:
+        Dict: Status dictionary indicating success or error.
+    """
+    if not requirement_ids:
+        return {"status": "error", "error_message": "Requirement ID list cannot be empty."}
+    
+    valid_ids = [req_id for req_id in requirement_ids if req_id and isinstance(req_id, str) and req_id.strip()]
+    
+    if not valid_ids:
+        return {"status": "error", "error_message": "No valid requirement IDs provided in the list. Ensure IDs are non-empty strings."}
+    
+    ignored_ids_count = len(requirement_ids) - len(valid_ids)
+    if ignored_ids_count > 0:
+        print(f"Warning: {ignored_ids_count} invalid or empty ID(s) were provided and will be ignored. Attempting to delete: {valid_ids}")
+
     try:
-        collection.delete(ids=[requirement_id])
-        return {"status": "success", "report": f"Requirement '{requirement_id}' deleted successfully."}
+        collection.delete(ids=valid_ids)
+        if len(valid_ids) == 1:
+            return {"status": "success", "report": f"Requirement '{valid_ids[0]}' deleted successfully."}
+        return {"status": "success", "report": f"Successfully deleted {len(valid_ids)} requirement(s): {', '.join(valid_ids)}."}
     except Exception as e:
-         # Catch potential ChromaDB errors (e.g., ID not found - though delete might not error)
-         # Check ChromaDB documentation for specific delete error handling if needed.
-        return {"status": "error", "error_message": f"Failed to delete requirement '{requirement_id}': {e}"}
+        return {"status": "error", "error_message": f"Failed to delete requirements. IDs attempted: {', '.join(valid_ids)}. Error: {e}"}
 
 
 def get_all_requirements() -> Dict:
