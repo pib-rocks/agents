@@ -2,6 +2,13 @@ import unittest
 from unittest.mock import patch, MagicMock
 import json
 import datetime # Used for creating expected datetime objects/strings
+import sys # Import sys module
+import os  # Import os module
+
+# Fügt das Projektstammverzeichnis zum Python-Pfad hinzu
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
 # Module to test
 from tools.vector_storage.requirements import (
