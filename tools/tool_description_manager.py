@@ -2,18 +2,18 @@ import sqlite3
 import os
 from typing import Dict, Optional, List
 
-# Pfad zur Datenbankdatei im selben Verzeichnis wie dieses Skript
+# Path to the database file in the same directory as this script
 DB_PATH = os.path.join(os.path.dirname(__file__), 'tool_descriptions.db')
 TABLE_NAME = 'tool_descriptions'
 
 def _get_db_connection():
-    """Stellt eine Verbindung zur SQLite-Datenbank her."""
+    """Establishes a connection to the SQLite database."""
     conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row # Ermöglicht den Zugriff auf Spalten per Namen
+    conn.row_factory = sqlite3.Row # Allows access to columns by name
     return conn
 
 def create_table_if_not_exists():
-    """Erstellt die Tabelle für Werkzeugbeschreibungen, falls sie noch nicht existiert."""
+    """Creates the table for tool descriptions if it does not already exist."""
     conn = _get_db_connection()
     try:
         with conn:
@@ -24,19 +24,19 @@ def create_table_if_not_exists():
                     source_module TEXT 
                 )
             """)
-            # Indizes für schnellere Abfragen hinzufügen (optional, aber gut für die Zukunft)
+            # Add indexes for faster queries (optional, but good for the future)
             conn.execute(f"CREATE INDEX IF NOT EXISTS idx_tool_name ON {TABLE_NAME} (tool_name);")
-        print(f"Tabelle '{TABLE_NAME}' erfolgreich initialisiert/überprüft in '{DB_PATH}'.")
+        print(f"Table '{TABLE_NAME}' successfully initialized/verified in '{DB_PATH}'.")
     except sqlite3.Error as e:
-        print(f"Fehler beim Erstellen/Überprüfen der Tabelle '{TABLE_NAME}': {e}")
+        print(f"Error creating/verifying table '{TABLE_NAME}': {e}")
     finally:
         conn.close()
 
 def _get_initial_tool_descriptions() -> Dict[str, Dict[str, str]]:
     """
-    Liefert die initialen Beschreibungen für die Anforderungs-Werkzeuge.
-    Diese werden verwendet, um die Datenbank beim ersten Mal zu befüllen.
-    Die Beschreibungen hier sollten prägnant und informativ für den LLM-Agenten sein.
+    Provides the initial descriptions for the requirement tools.
+    These are used to populate the database for the first time.
+    The descriptions here should be concise and informative for the LLM agent.
     """
     return {
         # Aus tools.vector_storage.requirements
@@ -71,33 +71,33 @@ def _get_initial_tool_descriptions() -> Dict[str, Dict[str, str]]:
         }
     }
 
-def populate_initial_descriptions():#AI! Change the descriptions in this module to english
-    """Befüllt die Datenbank mit den initialen Werkzeugbeschreibungen, falls noch nicht vorhanden."""
+def populate_initial_descriptions():
+    """Populates the database with initial tool descriptions if not already present."""
     conn = _get_db_connection()
     try:
         initial_descriptions = _get_initial_tool_descriptions()
         with conn:
             for tool_name, data in initial_descriptions.items():
-                # Füge nur ein, wenn der tool_name noch nicht existiert
+                # Only insert if the tool_name does not already exist
                 conn.execute(
                     f"INSERT OR IGNORE INTO {TABLE_NAME} (tool_name, description, source_module) VALUES (?, ?, ?)",
                     (tool_name, data["description"], data["source_module"])
                 )
-        print(f"{len(initial_descriptions)} initiale Werkzeugbeschreibungen in '{TABLE_NAME}' eingefügt/ignoriert.")
+        print(f"{len(initial_descriptions)} initial tool descriptions inserted/ignored in '{TABLE_NAME}'.")
     except sqlite3.Error as e:
-        print(f"Fehler beim Befüllen der initialen Beschreibungen: {e}")
+        print(f"Error populating initial descriptions: {e}")
     finally:
         conn.close()
 
 def get_tool_description(tool_name: str) -> Optional[str]:
     """
-    Ruft die Beschreibung für ein bestimmtes Werkzeug aus der Datenbank ab.
+    Retrieves the description for a specific tool from the database.
 
     Args:
-        tool_name (str): Der Name der Funktion des Werkzeugs (z.B. "add_requirement").
+        tool_name (str): The name of the tool's function (e.g., "add_requirement").
 
     Returns:
-        Optional[str]: Die Beschreibung des Werkzeugs oder None, wenn nicht gefunden.
+        Optional[str]: The description of the tool or None if not found.
     """
     conn = _get_db_connection()
     description: Optional[str] = None
@@ -108,22 +108,22 @@ def get_tool_description(tool_name: str) -> Optional[str]:
         if row:
             description = row['description']
     except sqlite3.Error as e:
-        print(f"Fehler beim Abrufen der Beschreibung für '{tool_name}': {e}")
+        print(f"Error retrieving description for '{tool_name}': {e}")
     finally:
         conn.close()
     return description
 
 def update_tool_description_in_db(tool_name: str, new_description: str) -> bool:
     """
-    Aktualisiert die Beschreibung eines Werkzeugs in der Datenbank.
-    Nützlich für externe Systeme, um Beschreibungen zu ändern.
+    Updates the description of a tool in the database.
+    Useful for external systems to change descriptions.
 
     Args:
-        tool_name (str): Der Name des Werkzeugs, dessen Beschreibung aktualisiert werden soll.
-        new_description (str): Die neue Beschreibung.
+        tool_name (str): The name of the tool whose description is to be updated.
+        new_description (str): The new description.
 
     Returns:
-        bool: True bei Erfolg, False bei Fehler.
+        bool: True on success, False on error.
     """
     conn = _get_db_connection()
     try:
@@ -133,18 +133,18 @@ def update_tool_description_in_db(tool_name: str, new_description: str) -> bool:
                 (new_description, tool_name)
             )
             if result.rowcount == 0:
-                print(f"Warnung: Werkzeug '{tool_name}' nicht in der Datenbank gefunden. Keine Aktualisierung.")
+                print(f"Warning: Tool '{tool_name}' not found in the database. No update performed.")
                 return False
-        print(f"Beschreibung für Werkzeug '{tool_name}' erfolgreich aktualisiert.")
+        print(f"Description for tool '{tool_name}' successfully updated.")
         return True
     except sqlite3.Error as e:
-        print(f"Fehler beim Aktualisieren der Beschreibung für '{tool_name}': {e}")
+        print(f"Error updating description for '{tool_name}': {e}")
         return False
     finally:
         conn.close()
 
 def get_all_tool_descriptions_from_db() -> List[Dict[str, str]]:
-    """Ruft alle Werkzeugnamen und ihre Beschreibungen aus der Datenbank ab."""
+    """Retrieves all tool names and their descriptions from the database."""
     conn = _get_db_connection()
     tools_data = []
     try:
@@ -154,31 +154,31 @@ def get_all_tool_descriptions_from_db() -> List[Dict[str, str]]:
         for row in rows:
             tools_data.append({"tool_name": row["tool_name"], "description": row["description"], "source_module": row["source_module"]})
     except sqlite3.Error as e:
-        print(f"Fehler beim Abrufen aller Werkzeugbeschreibungen: {e}")
+        print(f"Error retrieving all tool descriptions: {e}")
     finally:
         conn.close()
     return tools_data
 
-# Initialisierung: Tabelle erstellen und mit initialen Daten befüllen, wenn das Modul geladen wird.
-# Dies stellt sicher, dass die DB und die Tabelle existieren, wenn andere Teile der Anwendung sie verwenden.
+# Initialization: Create table and populate with initial data when the module is loaded.
+# This ensures that the DB and table exist when other parts of the application use them.
 if __name__ == "__main__":
-    print(f"Datenbank-Setup wird ausgeführt für: {DB_PATH}")
+    print(f"Database setup is being executed for: {DB_PATH}")
     create_table_if_not_exists()
     populate_initial_descriptions()
-    print("\nBeispielabruf aller Beschreibungen:")
+    print("\nExample retrieval of all descriptions:")
     all_descs = get_all_tool_descriptions_from_db()
     for desc_item in all_descs:
-        print(f"  Tool: {desc_item['tool_name']} (aus {desc_item['source_module']})")
+        print(f"  Tool: {desc_item['tool_name']} (from {desc_item['source_module']})")
         print(f"    Desc: {desc_item['description'][:70]}...")
     
-    print("\nBeispielabruf einer einzelnen Beschreibung:")
+    print("\nExample retrieval of a single description:")
     example_desc = get_tool_description("add_requirement")
     if example_desc:
-        print(f"  Desc für 'add_requirement': {example_desc}")
+        print(f"  Desc for 'add_requirement': {example_desc}")
     else:
-        print("  'add_requirement' nicht gefunden.")
+        print("  'add_requirement' not found.")
 else:
-    # Sicherstellen, dass die DB und Tabelle beim Import existieren
+    # Ensure the DB and table exist upon import
     create_table_if_not_exists()
     populate_initial_descriptions()
 
