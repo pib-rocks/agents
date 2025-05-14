@@ -4,7 +4,14 @@ import json
 import datetime # Used for creating expected datetime objects/strings
 
 # Module to test
-from tools.vector_storage.requirements import add_requirement, ALLOWED_IMPLEMENTATION_STATUSES, DEFAULT_IMPLEMENTATION_STATUS
+from tools.vector_storage.requirements import (
+    add_requirement, 
+    update_requirement, # Added for new TestUpdateRequirement class
+    ALLOWED_IMPLEMENTATION_STATUSES, 
+    DEFAULT_IMPLEMENTATION_STATUS,
+    ALLOWED_CLASSIFICATIONS,
+    DEFAULT_CLASSIFICATION
+)
 
 # Patching at class level: these mocks will be passed as arguments to each test method.
 # The order of decorators is bottom-up, so the arguments to test methods will be:
@@ -35,6 +42,7 @@ class TestAddRequirement(unittest.TestCase):
         expected_metadata = {
             'type': 'Requirement', 
             'implementation_status': DEFAULT_IMPLEMENTATION_STATUS,
+            'classification': DEFAULT_CLASSIFICATION,
             'change_date': iso_fixed_timestamp 
         }
         mock_collection.upsert.assert_called_once_with(
@@ -67,6 +75,7 @@ class TestAddRequirement(unittest.TestCase):
             "priority": "High",
             "source_jira_ticket": "XYZ-123",
             "implementation_status": "In Progress", # Expect provided status
+            'classification': DEFAULT_CLASSIFICATION, # Defaults as not provided in input
             'type': 'Requirement', 
             'change_date': iso_fixed_timestamp 
         }
@@ -96,6 +105,7 @@ class TestAddRequirement(unittest.TestCase):
         expected_metadata = {
             'type': 'Requirement',
             'implementation_status': DEFAULT_IMPLEMENTATION_STATUS,
+            'classification': DEFAULT_CLASSIFICATION,
             'change_date': iso_fixed_timestamp
         }
         mock_collection.upsert.assert_called_once_with(
@@ -178,6 +188,7 @@ class TestAddRequirement(unittest.TestCase):
             "details": "Test with non-ASCII: éàçüö, and quotes: \"example\"",
             'type': 'Requirement',
             'implementation_status': DEFAULT_IMPLEMENTATION_STATUS,
+            'classification': DEFAULT_CLASSIFICATION,
             'change_date': iso_fixed_timestamp
         }
         mock_collection.upsert.assert_called_once_with(
@@ -208,6 +219,7 @@ class TestAddRequirement(unittest.TestCase):
             "type": "Requirement", 
             "source": "Planning meeting",
             'implementation_status': DEFAULT_IMPLEMENTATION_STATUS,
+            'classification': DEFAULT_CLASSIFICATION,
             'change_date': iso_fixed_timestamp
         }
         mock_collection.upsert.assert_called_once_with(
@@ -271,8 +283,63 @@ class TestAddRequirement(unittest.TestCase):
         self.assertEqual(result2['status'], "success")
         args2, kwargs2 = mock_collection.upsert.call_args_list[0]
         self.assertEqual(kwargs2['metadatas'][0]['implementation_status'], DEFAULT_IMPLEMENTATION_STATUS)
+        self.assertEqual(kwargs2['metadatas'][0]['classification'], DEFAULT_CLASSIFICATION)
         self.assertEqual(kwargs2['metadatas'][0]['source'], "test_source")
 
+    def test_add_requirement_with_explicit_valid_classification(self, mock_collection, mock_get_next_id, mock_datetime_module):
+        # --- Arrange ---
+        fixed_timestamp = datetime.datetime(2023, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc)
+        mock_datetime_module.datetime.now.return_value = fixed_timestamp
+        iso_fixed_timestamp = fixed_timestamp.isoformat()
+
+        mock_get_next_id.return_value = "REQ-CLASS-VALID"
+        requirement_text = "A requirement with an explicit classification."
+        
+        for valid_classification in ALLOWED_CLASSIFICATIONS:
+            mock_collection.reset_mock()
+            mock_get_next_id.reset_mock()
+            current_req_id = f"REQ-CLASS-{valid_classification.replace(' ', '')}"
+            mock_get_next_id.return_value = current_req_id
+
+            metadata_input = {"classification": valid_classification, "source": "test"}
+            metadata_json_input = json.dumps(metadata_input)
+
+            # --- Act ---
+            result = add_requirement(requirement_text=requirement_text, metadata_json=metadata_json_input)
+
+            # --- Assert ---
+            self.assertEqual(result['status'], "success", f"Failed for classification: {valid_classification}")
+            self.assertEqual(result['requirement_id'], current_req_id)
+
+            expected_metadata = {
+                "classification": valid_classification,
+                "source": "test",
+                'type': 'Requirement',
+                'implementation_status': DEFAULT_IMPLEMENTATION_STATUS,
+                'change_date': iso_fixed_timestamp
+            }
+            mock_collection.upsert.assert_called_once_with(
+                ids=[current_req_id],
+                documents=[requirement_text],
+                metadatas=[expected_metadata]
+            )
+
+    def test_add_requirement_with_invalid_classification(self, mock_collection, mock_get_next_id, mock_datetime_module):
+        # --- Arrange ---
+        mock_get_next_id.return_value = "REQ-CLASS-INVALID" # ID will be generated before validation
+        requirement_text = "A requirement with an invalid classification."
+        invalid_classification = "DefinitelyNotAllowedClassification"
+        metadata_input = {"classification": invalid_classification}
+        metadata_json_input = json.dumps(metadata_input)
+
+        # --- Act ---
+        result = add_requirement(requirement_text=requirement_text, metadata_json=metadata_json_input)
+
+        # --- Assert ---
+        self.assertEqual(result['status'], "error")
+        self.assertIn(f"Invalid classification '{invalid_classification}'. Must be one of {ALLOWED_CLASSIFICATIONS}", result['error_message'])
+        mock_collection.upsert.assert_not_called()
+        mock_get_next_id.assert_called_once_with("REQ-") # Ensure ID generation was attempted
 
     def test_add_requirement_with_valid_implementation_status(self, mock_collection, mock_get_next_id, mock_datetime_module):
         fixed_timestamp = datetime.datetime(2023, 1, 1, 12, 0, 0, tzinfo=datetime.timezone.utc)
@@ -294,11 +361,12 @@ class TestAddRequirement(unittest.TestCase):
             self.assertEqual(result['status'], "success", f"Failed for status: {valid_status}")
             args, kwargs = mock_collection.upsert.call_args
             self.assertEqual(kwargs['metadatas'][0]['implementation_status'], valid_status)
+            self.assertEqual(kwargs['metadatas'][0]['classification'], DEFAULT_CLASSIFICATION) # Should still default
             self.assertEqual(kwargs['metadatas'][0]['type'], 'Requirement')
             self.assertEqual(kwargs['metadatas'][0]['change_date'], iso_fixed_timestamp)
 
     def test_add_requirement_with_invalid_implementation_status(self, mock_collection, mock_get_next_id, mock_datetime_module):
-        mock_get_next_id.return_value = "REQ-INVALID-STATUS"
+        mock_get_next_id.return_value = "REQ-INVALID-STATUS" # ID will be generated before validation
         requirement_text = "Requirement with invalid status."
         invalid_status = "DefinitelyNotAllowed"
         metadata_input = {"implementation_status": invalid_status}
@@ -311,6 +379,193 @@ class TestAddRequirement(unittest.TestCase):
             f"Invalid implementation_status '{invalid_status}'. Must be one of {ALLOWED_IMPLEMENTATION_STATUSES}."
         )
         mock_collection.upsert.assert_not_called()
+        mock_get_next_id.assert_called_once_with("REQ-") # Ensure ID generation was attempted
+
+
+# Test class for update_requirement function
+@patch('tools.vector_storage.requirements.datetime')
+@patch('tools.vector_storage.requirements.collection', new_callable=MagicMock)
+class TestUpdateRequirement(unittest.TestCase):
+
+    def setUp(self):
+        self.req_id = "REQ-UPDATE-1"
+        self.original_text = "Original requirement text."
+        self.original_metadata = {
+            "type": "Requirement",
+            "source": "original_source",
+            "implementation_status": "Open",
+            "classification": "Functional", # Assume it was set during add
+            "change_date": datetime.datetime(2023, 1, 1, 10, 0, 0, tzinfo=datetime.timezone.utc).isoformat()
+        }
+        self.fixed_now = datetime.datetime(2023, 1, 15, 12, 0, 0, tzinfo=datetime.timezone.utc)
+        self.iso_fixed_now = self.fixed_now.isoformat()
+
+    def test_update_requirement_classification_only(self, mock_collection, mock_datetime_module):
+        # --- Arrange ---
+        mock_datetime_module.datetime.now.return_value = self.fixed_now
+        mock_collection.get.return_value = {
+            'ids': [self.req_id],
+            'documents': [self.original_text],
+            'metadatas': [self.original_metadata]
+        }
+        new_classification = "Non-Functional"
+        new_metadata_input = {"classification": new_classification, "source": "original_source", "implementation_status": "Open"} # provide other existing fields
+        new_metadata_json = json.dumps(new_metadata_input)
+
+        # --- Act ---
+        result = update_requirement(
+            requirement_id=self.req_id,
+            new_metadata_json=new_metadata_json
+        )
+
+        # --- Assert ---
+        self.assertEqual(result['status'], "success")
+        self.assertIn("Requirement 'REQ-UPDATE-1' updated successfully (metadata).", result['report'])
+        
+        expected_metadata = self.original_metadata.copy()
+        expected_metadata.update({
+            "classification": new_classification,
+            "change_date": self.iso_fixed_now,
+            "type": "Requirement" # Ensure type is preserved or set
+        })
+        # Adjust expected if other fields were part of new_metadata_input
+        expected_metadata["source"] = new_metadata_input["source"]
+        expected_metadata["implementation_status"] = new_metadata_input["implementation_status"]
+
+
+        mock_collection.upsert.assert_called_once_with(
+            ids=[self.req_id],
+            documents=[self.original_text], # Text not changed
+            metadatas=[expected_metadata]
+        )
+
+    def test_update_requirement_sets_default_classification_if_missing_in_new_metadata(self, mock_collection, mock_datetime_module):
+        # --- Arrange ---
+        mock_datetime_module.datetime.now.return_value = self.fixed_now
+        mock_collection.get.return_value = {
+            'ids': [self.req_id],
+            'documents': [self.original_text],
+            'metadatas': [self.original_metadata] # Original had "Functional"
+        }
+        # New metadata intentionally omits 'classification'
+        new_metadata_input = {"source": "updated_source", "implementation_status": "In Progress"}
+        new_metadata_json = json.dumps(new_metadata_input)
+
+        # --- Act ---
+        result = update_requirement(
+            requirement_id=self.req_id,
+            new_metadata_json=new_metadata_json
+        )
+
+        # --- Assert ---
+        self.assertEqual(result['status'], "success")
+        
+        expected_metadata = {
+            "source": "updated_source",
+            "implementation_status": "In Progress",
+            "classification": DEFAULT_CLASSIFICATION, # Should default
+            "type": "Requirement",
+            "change_date": self.iso_fixed_now
+        }
+        mock_collection.upsert.assert_called_once_with(
+            ids=[self.req_id],
+            documents=[self.original_text],
+            metadatas=[expected_metadata]
+        )
+
+    def test_update_requirement_with_invalid_classification(self, mock_collection, mock_datetime_module):
+        # --- Arrange ---
+        mock_datetime_module.datetime.now.return_value = self.fixed_now # Not strictly needed as it should fail before date
+        mock_collection.get.return_value = { # Needed for the initial get
+            'ids': [self.req_id],
+            'documents': [self.original_text],
+            'metadatas': [self.original_metadata]
+        }
+        invalid_classification = "InvalidClass"
+        new_metadata_input = {"classification": invalid_classification}
+        new_metadata_json = json.dumps(new_metadata_input)
+
+        # --- Act ---
+        result = update_requirement(
+            requirement_id=self.req_id,
+            new_metadata_json=new_metadata_json
+        )
+
+        # --- Assert ---
+        self.assertEqual(result['status'], "error")
+        self.assertIn(f"Invalid classification '{invalid_classification}'. Must be one of {ALLOWED_CLASSIFICATIONS}", result['error_message'])
+        mock_collection.upsert.assert_not_called()
+
+    def test_update_requirement_text_and_classification(self, mock_collection, mock_datetime_module):
+        # --- Arrange ---
+        mock_datetime_module.datetime.now.return_value = self.fixed_now
+        mock_collection.get.return_value = {
+            'ids': [self.req_id],
+            'documents': [self.original_text],
+            'metadatas': [self.original_metadata]
+        }
+        new_text = "Updated requirement text for classification test."
+        new_classification = "Business"
+        # Provide minimal metadata, other fields should be handled by the function (type, default classification if not this one)
+        new_metadata_input = {"classification": new_classification, "source_jira_ticket": "NEW-TICKET"}
+        new_metadata_json = json.dumps(new_metadata_input)
+
+        # --- Act ---
+        result = update_requirement(
+            requirement_id=self.req_id,
+            new_requirement_text=new_text,
+            new_metadata_json=new_metadata_json
+        )
+
+        # --- Assert ---
+        self.assertEqual(result['status'], "success")
+        self.assertIn("updated successfully (text, metadata)", result['report'])
+        
+        expected_metadata = {
+            "classification": new_classification,
+            "source_jira_ticket": "NEW-TICKET", # from new metadata
+            "type": "Requirement", # Defaulted by update_requirement logic
+            "change_date": self.iso_fixed_now
+            # implementation_status would be missing if not in new_metadata_input
+        }
+        mock_collection.upsert.assert_called_once_with(
+            ids=[self.req_id],
+            documents=[new_text],
+            metadatas=[expected_metadata]
+        )
+
+    def test_update_requirement_classification_persists_if_metadata_not_updated(self, mock_collection, mock_datetime_module):
+        # --- Arrange ---
+        mock_datetime_module.datetime.now.return_value = self.fixed_now
+        # Original metadata has 'classification': 'Functional'
+        mock_collection.get.return_value = {
+            'ids': [self.req_id],
+            'documents': [self.original_text],
+            'metadatas': [self.original_metadata.copy()] 
+        }
+        new_text = "Only updating the text."
+
+        # --- Act ---
+        result = update_requirement(
+            requirement_id=self.req_id,
+            new_requirement_text=new_text,
+            new_metadata_json=None # Metadata not being updated explicitly
+        )
+
+        # --- Assert ---
+        self.assertEqual(result['status'], "success")
+        self.assertIn("updated successfully (text)", result['report'])
+        
+        expected_metadata = self.original_metadata.copy()
+        expected_metadata['change_date'] = self.iso_fixed_now # Change date always updates
+
+        mock_collection.upsert.assert_called_once_with(
+            ids=[self.req_id],
+            documents=[new_text],
+            metadatas=[expected_metadata] # Should contain original classification
+        )
+        self.assertEqual(mock_collection.upsert.call_args[1]['metadatas'][0]['classification'], "Functional")
+
 
 if __name__ == '__main__':
     unittest.main(argv=['first-arg-is-ignored'], exit=False)

@@ -12,6 +12,10 @@ from . import client, collection, _get_next_id
 ALLOWED_IMPLEMENTATION_STATUSES = {"Open", "In Progress", "Done", "Deferred", "Blocked", "Unknown"}
 DEFAULT_IMPLEMENTATION_STATUS = "Open"
 
+# Define allowed requirement classifications
+ALLOWED_CLASSIFICATIONS = {"Functional", "Non-Functional", "Business"}
+DEFAULT_CLASSIFICATION = "Functional"
+
 # --- Requirement Functions ---
 def add_requirement(requirement_text: str, metadata_json: Optional[str] = None) -> Dict:
     """Adds a new software requirement to the vector database with an automatically generated ID.
@@ -25,7 +29,9 @@ def add_requirement(requirement_text: str, metadata_json: Optional[str] = None) 
                                        - "source_jira_ticket" (str): The originating Jira ticket key.
                                        - "implementation_status" (str): Must be one of ALLOWED_IMPLEMENTATION_STATUSES.
                                                                         Defaults to "Open" if not provided.
-                                       Example: '{ "type": "Requirement", "source_jira_ticket": "PROJECT-123", "implementation_status": "Open" }'
+                                       - "classification" (str): Must be one of ALLOWED_CLASSIFICATIONS.
+                                                                 Defaults to "Functional" if not provided.
+                                       Example: '{ "type": "Requirement", "source_jira_ticket": "PROJECT-123", "implementation_status": "Open", "classification": "Functional" }'
 
     Returns:
         Dict: Status dictionary indicating success or error, including the generated requirement ID.
@@ -61,6 +67,17 @@ def add_requirement(requirement_text: str, metadata_json: Optional[str] = None) 
             }
     else:
         parsed_metadata['implementation_status'] = DEFAULT_IMPLEMENTATION_STATUS
+
+    # Validate and set requirement classification
+    current_classification = parsed_metadata.get('classification')
+    if current_classification is not None:
+        if current_classification not in ALLOWED_CLASSIFICATIONS:
+            return {
+                "status": "error",
+                "error_message": f"Invalid classification '{current_classification}'. Must be one of {ALLOWED_CLASSIFICATIONS}."
+            }
+    else:
+        parsed_metadata['classification'] = DEFAULT_CLASSIFICATION
 
 
     # Ensure 'type' is set in metadata
@@ -152,12 +169,15 @@ def update_requirement(requirement_id: str, new_requirement_text: Optional[str] 
         new_requirement_text (Optional[str]): The new text for the requirement. If None, text is not updated.
         new_metadata_json (Optional[str]): A JSON string representing the *complete* new metadata object.
                                            If provided, it *replaces* the existing metadata entirely.
-                                           If 'implementation_status' is included, it must be one of ALLOWED_IMPLEMENTATION_STATUSES.
+                                           - If 'implementation_status' is included, it must be one of ALLOWED_IMPLEMENTATION_STATUSES.
+                                           - If 'classification' is included, it must be one of ALLOWED_CLASSIFICATIONS.
+                                             If 'classification' is omitted, it defaults to DEFAULT_CLASSIFICATION.
                                            The structure of the metadata must be like this:
                                             {
                                                 "type": "Requirement",
                                                 "source_jira_ticket": "PR-123",
-                                                "implementation_status": "In Progress"
+                                                "implementation_status": "In Progress",
+                                                "classification": "Functional"
                                                 # Add other relevant metadata fields here
                                             }
 
@@ -210,9 +230,21 @@ def update_requirement(requirement_id: str, new_requirement_text: Optional[str] 
                     "status": "error",
                     "error_message": f"Invalid implementation_status '{new_status}'. Must be one of {ALLOWED_IMPLEMENTATION_STATUSES}."
                 }
+
+            # Validate classification if present in the new metadata, else set default
+            new_classification = parsed_new_metadata.get('classification')
+            if new_classification is not None:
+                if new_classification not in ALLOWED_CLASSIFICATIONS:
+                    return {
+                        "status": "error",
+                        "error_message": f"Invalid classification '{new_classification}'. Must be one of {ALLOWED_CLASSIFICATIONS}."
+                    }
+            else:
+                # If new_metadata_json is provided but classification is missing, set default
+                parsed_new_metadata['classification'] = DEFAULT_CLASSIFICATION
             
             # Replace entire metadata as per function contract
-            final_metadata = parsed_new_metadata 
+            final_metadata = parsed_new_metadata
 
             # Ensure the type remains correct or is defaulted
             if 'type' not in final_metadata: # Check final_metadata after potential replacement
