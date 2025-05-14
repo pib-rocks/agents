@@ -161,7 +161,7 @@ def retrieve_similar_requirements(query_text: str, n_results: int = 3, filter_me
         return {"status": "error", "error_message": f"Failed to retrieve requirements: {e}"}
 
 
-def update_requirement(requirement_id: str, new_requirement_text: Optional[str] = None, new_metadata_json: Optional[str] = None) -> Dict:#AI! Make the tool update_requirement avaialable to the Product-Owner
+def update_requirement(requirement_id: str, new_requirement_text: Optional[str] = None, new_metadata_json: Optional[str] = None) -> Dict:
     """Updates the text and/or metadata of an existing requirement using upsert for metadata compatibility.
 
     Args:
