@@ -7,6 +7,7 @@ from typing import List, Dict, Optional
 
 # Import shared components from the package initializer
 from . import client, collection, _get_next_id
+from .requirements import ALLOWED_CLASSIFICATIONS, DEFAULT_CLASSIFICATION # Import from requirements
 
 # --- Acceptance Criteria Functions ---
 
@@ -20,7 +21,9 @@ def add_acceptance_criterion(criterion_text: str, metadata_json: Optional[str] =
                                        this JSON object should contain keys like:
                                        - "type" (str): Must be "AcceptanceCriterion".
                                        - "source_jira_ticket" (str): The originating Jira ticket key (e.g., "PROJECT-123").
-                                       Example: '{ "type": "AcceptanceCriterion", "source_jira_ticket": "PROJECT-123" }'
+                                       - "classification" (str): Must be one of ALLOWED_CLASSIFICATIONS.
+                                                                 Defaults to "Functional" if not provided.
+                                       Example: '{ "type": "AcceptanceCriterion", "source_jira_ticket": "PROJECT-123", "classification": "Functional" }'
 
     Returns:
         Dict: Status dictionary indicating success or error, including the generated criterion ID.
@@ -48,6 +51,17 @@ def add_acceptance_criterion(criterion_text: str, metadata_json: Optional[str] =
             return {"status": "error", "error_message": "Invalid JSON format provided for metadata."}
         except ValueError as ve:
              return {"status": "error", "error_message": str(ve)}
+
+    # Validate and set requirement classification
+    current_classification = parsed_metadata.get('classification')
+    if current_classification is not None:
+        if current_classification not in ALLOWED_CLASSIFICATIONS:
+            return {
+                "status": "error",
+                "error_message": f"Invalid classification '{current_classification}'. Must be one of {ALLOWED_CLASSIFICATIONS}."
+            }
+    else:
+        parsed_metadata['classification'] = DEFAULT_CLASSIFICATION
 
     # Automatically add type if not present? Consider implications.
     if 'type' not in parsed_metadata:
@@ -176,8 +190,9 @@ def update_acceptance_criterion(criterion_id: str, new_criterion_text: Optional[
         new_criterion_text (Optional[str]): The new text for the criterion. If None, text is not updated.
         new_metadata_json (Optional[str]): A JSON string representing the *complete* new metadata object.
                                            If provided, it *replaces* the existing metadata entirely.
-                                           The structure should include keys like "type" (must be "AcceptanceCriterion")
-                                           and "source_jira_ticket".
+                                           The structure should include keys like "type" (must be "AcceptanceCriterion"),
+                                           "source_jira_ticket", and "classification" (must be one of ALLOWED_CLASSIFICATIONS,
+                                           defaults to DEFAULT_CLASSIFICATION if omitted).
                                            If None, metadata is not updated.
 
     Returns:
@@ -223,6 +238,18 @@ def update_acceptance_criterion(criterion_id: str, new_criterion_text: Optional[
                  parsed_new_metadata['type'] = 'AcceptanceCriterion'
             elif parsed_new_metadata.get('type') != 'AcceptanceCriterion':
                  print(f"Warning: Updating metadata for '{criterion_id}' with a type other than 'AcceptanceCriterion' ('{parsed_new_metadata.get('type')}').")
+
+            # Validate classification if present in the new metadata, else set default
+            new_classification = parsed_new_metadata.get('classification')
+            if new_classification is not None:
+                if new_classification not in ALLOWED_CLASSIFICATIONS:
+                    return {
+                        "status": "error",
+                        "error_message": f"Invalid classification '{new_classification}'. Must be one of {ALLOWED_CLASSIFICATIONS}."
+                    }
+            else:
+                # If new_metadata_json is provided but classification is missing, set default
+                parsed_new_metadata['classification'] = DEFAULT_CLASSIFICATION
 
             updates_to_make['metadatas'] = [parsed_new_metadata]
         except json.JSONDecodeError:

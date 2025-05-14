@@ -7,6 +7,7 @@ from typing import List, Dict, Optional
 
 # Import shared components from the package initializer
 from . import client, collection, _get_next_id
+from .requirements import ALLOWED_CLASSIFICATIONS, DEFAULT_CLASSIFICATION # Import from requirements
 
 # --- Test Case Functions ---
 
@@ -22,10 +23,12 @@ def add_test_case(test_case_document: str, metadata_json: Optional[str] = None) 
                                        - "type" (str): Must be "TestCase".
                                        - "title" (str): A descriptive title for the test case.
                                        - "source_jira_ticket" (str): The originating Jira ticket key (e.g., "PROJECT-123").
+                                       - "classification" (str): Must be one of ALLOWED_CLASSIFICATIONS.
+                                                                 Defaults to "Functional" if not provided.
                                        - "test_steps" (List[Dict]): A list of test step objects, where each object has:
                                            - "step_description" (str): Description of the step.
                                            - "is_automatable" (bool): Whether the step can be automated.
-                                       Example: '{ "type": "TestCase", "title": "...", "source_jira_ticket": "...", "test_steps": [{"step_description": "...", "is_automatable": true}] }'
+                                       Example: '{ "type": "TestCase", "title": "...", "source_jira_ticket": "...", "classification": "Functional", "test_steps": [{"step_description": "...", "is_automatable": true}] }'
 
     Returns:
         Dict: Status dictionary indicating success or error, including the generated test case ID.
@@ -52,6 +55,17 @@ def add_test_case(test_case_document: str, metadata_json: Optional[str] = None) 
             return {"status": "error", "error_message": "Invalid JSON format provided for metadata."}
         except ValueError as ve:
              return {"status": "error", "error_message": str(ve)}
+
+    # Validate and set requirement classification
+    current_classification = parsed_metadata.get('classification')
+    if current_classification is not None:
+        if current_classification not in ALLOWED_CLASSIFICATIONS:
+            return {
+                "status": "error",
+                "error_message": f"Invalid classification '{current_classification}'. Must be one of {ALLOWED_CLASSIFICATIONS}."
+            }
+    else:
+        parsed_metadata['classification'] = DEFAULT_CLASSIFICATION
 
     # Enforce type for consistency
     if 'type' not in parsed_metadata:
@@ -159,7 +173,8 @@ def update_test_case(test_case_id: str, new_test_case_document: Optional[str] = 
         new_metadata_json (Optional[str]): A JSON string representing the *complete* new metadata object.
                                            If provided, it *replaces* the existing metadata entirely.
                                            The structure should include keys like "type" (must be "TestCase"),
-                                           "title", "source_jira_ticket", and "test_steps" (with its nested structure).
+                                           "title", "source_jira_ticket", "classification" (must be one of ALLOWED_CLASSIFICATIONS,
+                                           defaults to DEFAULT_CLASSIFICATION if omitted), and "test_steps".
                                            If None, metadata is not updated.
 
     Returns:
@@ -204,6 +219,18 @@ def update_test_case(test_case_id: str, new_test_case_document: Optional[str] = 
                  parsed_new_metadata['type'] = 'TestCase'
             elif parsed_new_metadata.get('type') != 'TestCase':
                  print(f"Warning: Updating metadata for '{test_case_id}' with a type other than 'TestCase' ('{parsed_new_metadata.get('type')}').")
+
+            # Validate classification if present in the new metadata, else set default
+            new_classification = parsed_new_metadata.get('classification')
+            if new_classification is not None:
+                if new_classification not in ALLOWED_CLASSIFICATIONS:
+                    return {
+                        "status": "error",
+                        "error_message": f"Invalid classification '{new_classification}'. Must be one of {ALLOWED_CLASSIFICATIONS}."
+                    }
+            else:
+                # If new_metadata_json is provided but classification is missing, set default
+                parsed_new_metadata['classification'] = DEFAULT_CLASSIFICATION
 
             updates_to_make['metadatas'] = [parsed_new_metadata]
         except json.JSONDecodeError:
