@@ -1,1 +1,1 @@
-# This file makes the 'tests/tools/vector_storage' directory a Python package.
+# This file makes 'tests.tools.vector_storage' a package.

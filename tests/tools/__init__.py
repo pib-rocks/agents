@@ -1,1 +1,1 @@
-# This file makes the 'tests/tools' directory a Python package.
+# This file makes 'tests.tools' a package.
