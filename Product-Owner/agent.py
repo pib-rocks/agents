@@ -51,6 +51,9 @@ from tools.neo4j_requirements_tool import ( # Import Neo4j tools
     add_or_update_requirement_neo4j,
     add_relationship_neo4j
 )
+# Importiere die Funktion zum Laden von Werkzeugbeschreibungen
+from tools.tool_description_manager import get_tool_description
+
 
 # Get model name from environment variable, with a default fallback
 # Note: This line was added in a previous step (commit abb4a04) but wasn't in the provided file content.
@@ -87,7 +90,7 @@ root_agent = Agent(
         "and manages requirements in a vector database."
     ),
     instruction=agent_instruction, # Load instruction from file
-    tools=[
+    tools=(lambda: [
         # Jira Tools
         get_jira_issue_details,
         update_jira_issue,
@@ -96,27 +99,28 @@ root_agent = Agent(
         show_jira_issue,
         get_jira_transitions,
         transition_jira_issue,
-        # Vector DB Tools
-        add_requirement,
-        retrieve_similar_requirements,
-        update_requirement,
-        delete_requirement,
-        get_all_requirements,
-        # Acceptance Criteria Functions
+        # Vector DB Tools - Lade Beschreibungen dynamisch
+        (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(add_requirement),
+        (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(retrieve_similar_requirements),
+        (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(update_requirement),
+        (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(delete_requirement),
+        (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(get_all_requirements),
+        # Acceptance Criteria Functions (nicht Teil der Anforderungs-Tools, daher keine Änderung der Beschreibung)
         add_acceptance_criterion,
         retrieve_similar_acceptance_criteria,
         delete_acceptance_criterion,
         update_acceptance_criterion,
         get_all_acceptance_criteria,
+        # Test Case Functions (nicht Teil der Anforderungs-Tools, daher keine Änderung der Beschreibung)
         add_test_case,
         retrieve_similar_test_cases,
         update_test_case,
         delete_test_case,
         get_all_test_cases,
-        # Neo4j Tools
-        add_or_update_requirement_neo4j,
-        add_relationship_neo4j,
+        # Neo4j Tools - Lade Beschreibungen dynamisch
+        (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(add_or_update_requirement_neo4j),
+        (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(add_relationship_neo4j),
         # Time Search Tool
         search_jira_issues_by_time,
-    ],
+    ])(),
 )
