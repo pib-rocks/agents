@@ -52,7 +52,7 @@ from tools.neo4j_requirements_tool import ( # Import Neo4j tools
     add_relationship_neo4j
 )
 # Importiere die Funktion zum Laden von Werkzeugbeschreibungen
-from tools.tool_description_manager import get_tool_description
+from tools.tool_description_manager import (get_tool_description, update_tool_description_in_db)
 
 
 # Get model name from environment variable, with a default fallback
@@ -122,5 +122,8 @@ root_agent = Agent(
         (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(add_relationship_neo4j),
         # Time Search Tool
         search_jira_issues_by_time,
+        # Working with tools
+        get_tool_description,
+        update_tool_description_in_db,
     ])(),
 )

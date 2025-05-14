@@ -26,6 +26,9 @@ share/python-wheels/
 *.egg
 MANIFEST
 
+# Dynamic tool-descriptions in local database
+tools/tool_descriptions.db
+
 # Lokal Chroma-DB store
 tools/chroma_db/
 
