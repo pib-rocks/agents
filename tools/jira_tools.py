@@ -13,6 +13,99 @@ CUSTOM_FIELD_CATEGORY_ID = "customfield_10035" # ID for the Category custom fiel
 # Renamed constant for broader applicability
 ALLOWED_COMPONENTS = ["cerebra", "pib-backend", "pib-blockly"]
 
+# --- General Issue Creation ---
+
+def create_jira_issue(
+    project_key: str,
+    summary: str,
+    description: str,
+    issue_type_name: str,
+    components: Optional[List[str]] = None
+) -> dict:
+    """Creates a new Jira issue (e.g., Story, Task).
+
+    Requires JIRA_INSTANCE_URL, JIRA_EMAIL, JIRA_API_KEY environment variables.
+
+    Args:
+        project_key (str): The key of the project where the issue will be created (e.g., 'PROJ').
+        summary (str): The summary (title) for the new issue.
+        description (str): The description for the new issue (plain text, will be converted to ADF).
+        issue_type_name (str): The name of the issue type (e.g., 'Story', 'Task', 'Bug').
+        components (Optional[List[str]]): A list of component names to set.
+            Must be from the allowed list.
+
+    Returns:
+        dict: status and result (new issue key) or error message.
+    """
+    jira_url = os.getenv("JIRA_INSTANCE_URL")
+    jira_email = os.getenv("JIRA_EMAIL")
+    jira_api_key = os.getenv("JIRA_API_KEY")
+
+    if not all([jira_url, jira_email, jira_api_key]):
+        return {"status": "error", "error_message": "Jira configuration missing."}
+    if not all([project_key, summary, description, issue_type_name]):
+        return {"status": "error", "error_message": "Project key, summary, description, and issue type name are required."}
+
+    # Validate components if provided
+    if components:
+        if not isinstance(components, list):
+            return {"status": "error", "error_message": "Components must be provided as a list of strings."}
+        invalid_components = [c for c in components if c not in ALLOWED_COMPONENTS]
+        if invalid_components:
+            return {
+                "status": "error",
+                "error_message": f"Invalid component(s): {', '.join(invalid_components)}. Allowed components are: {', '.join(ALLOWED_COMPONENTS)}."
+            }
+
+    api_url = f"{jira_url.rstrip('/')}/rest/api/3/issue"
+    auth = (jira_email, jira_api_key)
+    headers = {"Accept": "application/json", "Content-Type": "application/json"}
+
+    payload_fields = {
+        "project": {"key": project_key},
+        "summary": summary,
+        "description": { # Basic ADF format for description
+            "type": "doc",
+            "version": 1,
+            "content": [
+                {
+                    "type": "paragraph",
+                    "content": [{"type": "text", "text": description}],
+                }
+            ],
+        },
+        "issuetype": {"name": issue_type_name},
+    }
+
+    if components:
+        payload_fields["components"] = [{"name": c} for c in components]
+
+    payload = {"fields": payload_fields}
+
+    try:
+        response = requests.post(
+            api_url, headers=headers, auth=auth, data=json.dumps(payload), timeout=20
+        )
+        response.raise_for_status()
+
+        new_issue_data = response.json()
+        new_issue_key = new_issue_data.get("key")
+        return {
+            "status": "success",
+            "report": f"Issue '{new_issue_key}' created successfully in project '{project_key}'.",
+            "issue_key": new_issue_key
+        }
+    except requests.exceptions.HTTPError as http_err:
+        error_message = f"HTTP error creating issue: {http_err}"
+        try:
+            error_details = response.json()
+            if "errorMessages" in error_details: error_message += f" Details: {'; '.join(error_details['errorMessages'])}"
+            if "errors" in error_details: error_message += f" Field Errors: {json.dumps(error_details['errors'])}"
+        except json.JSONDecodeError: pass
+        return {"status": "error", "error_message": error_message}
+    except requests.exceptions.RequestException as req_err:
+        return {"status": "error", "error_message": f"Error creating issue: {req_err}"}
+
 # --- Sub-task Management Tools ---
 
 def create_jira_subtask(
