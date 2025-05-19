@@ -179,6 +179,24 @@ def _get_initial_tool_descriptions() -> Dict[str, Dict[str, str]]:
         "generate_jira_issues_for_requirement": {
             "description": "Generates Jira issues (e.g., Stories, Tasks) from a specified requirement in the vector database. It can use similar requirements for context and link the generated Jira issues back to the requirement's metadata.",
             "source_module": "tools.vector_storage.requirements"
+        },
+        # Eigene Werkzeuge des tool_description_manager
+        "get_tool_description": {
+            "description": "Retrieves the description for a specific tool from the database. Useful for understanding what a tool does.",
+            "source_module": "tools.tool_description_manager"
+        },
+        "update_tool_description_in_db": {
+            "description": "Updates the description of an existing tool in the database. This allows dynamic modification of how tools are presented to the AI.",
+            "source_module": "tools.tool_description_manager"
+        },
+        # Werkzeuge aus dem neuen tool_manager
+        "list_available_tools_for_agent": {
+            "description": "Lists all tools defined in the system that are NOT currently enabled for the specified agent. Useful for discovering tools that can be added to an agent's capabilities. Requires 'agent_name'.",
+            "source_module": "tools.tool_manager"
+        },
+        "set_tool_availability_for_agent": {
+            "description": "Enables or disables a specific tool for a given agent. The tool must exist in the system. Requires 'agent_name', 'tool_name', and 'enable' (true to enable, false to disable).",
+            "source_module": "tools.tool_manager"
         }
     }
 
@@ -198,7 +216,8 @@ def _get_initial_agent_tool_assignments() -> Dict[str, List[str]]:
             "add_test_case", "retrieve_similar_test_cases", "update_test_case",
             "delete_test_case", "get_all_test_cases",
             "add_or_update_requirement_neo4j", "add_relationship_neo4j",
-            "get_tool_description", "update_tool_description_in_db" # Meta-tools
+            "get_tool_description", "update_tool_description_in_db", # Meta-tools aus tool_description_manager
+            "list_available_tools_for_agent", "set_tool_availability_for_agent" # Meta-tools aus tool_manager
         ],
         "Developer": [
             "get_jira_issue_details", "update_jira_issue", "add_jira_comment",

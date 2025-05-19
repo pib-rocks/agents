@@ -59,6 +59,10 @@ from tools.tool_description_manager import (
     update_tool_description_in_db,
     get_tools_for_agent # Neue Funktion
 )
+from tools.tool_manager import ( # Importiere neue Werkzeugverwaltungsfunktionen
+    list_available_tools_for_agent,
+    set_tool_availability_for_agent
+)
 import importlib # Für dynamische Importe, falls benötigt, aber wir mappen direkt
 
 
@@ -101,8 +105,11 @@ AVAILABLE_TOOLS_MAP = {
     "add_or_update_requirement_neo4j": add_or_update_requirement_neo4j,
     "add_relationship_neo4j": add_relationship_neo4j,
     # Meta-Tools (Werkzeugbeschreibungen verwalten)
-    "get_tool_description": get_tool_description,
-    "update_tool_description_in_db": update_tool_description_in_db,
+    "get_tool_description": get_tool_description, # aus tool_description_manager
+    "update_tool_description_in_db": update_tool_description_in_db, # aus tool_description_manager
+    # Meta-Tools (Werkzeugverfügbarkeit verwalten)
+    "list_available_tools_for_agent": list_available_tools_for_agent, # aus tool_manager
+    "set_tool_availability_for_agent": set_tool_availability_for_agent, # aus tool_manager
     # Google Search (obwohl nicht in der initialen Liste für PO, hier für Vollständigkeit, falls später hinzugefügt)
     "perform_google_search": perform_google_search
 }
