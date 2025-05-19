@@ -35,7 +35,7 @@ def get_confluence_page(page_id: Optional[str] = None, space_key: Optional[str] 
         Dict[str, Any]: A dictionary with status, a message, and page data on success.
     """
     confluence_url = os.getenv("CONFLUENCE_INSTANCE_URL")
-    confluence_email = os.getenv("CONFLUENCE_EMAIL")
+    confluence_email = os.getenv("CONFLUENCE_EMAIL")#AI! Rename this to ATLASSIAN_EMAIL and use the same in jira_tools.py also, so that all of the atlassian-tools can be accessed with the same credentials
     confluence_api_key = os.getenv("CONFLUENCE_API_KEY")
 
     if not all([confluence_url, confluence_email, confluence_api_key]):
