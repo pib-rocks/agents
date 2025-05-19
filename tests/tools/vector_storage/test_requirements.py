@@ -753,7 +753,7 @@ class TestGenerateJiraIssuesForRequirement(unittest.TestCase):
         
         # Check that the description contains the error message for similar reqs
         create_jira_call_args = mock_create_jira.call_args_list[0][1]
-        self.assertIn("Error retrieving similar requirements: Exception('Vector DB connection error')", create_jira_call_args['description'])
+        self.assertIn("Error retrieving similar requirements: Vector DB connection error", create_jira_call_args['description'])
 
     def test_create_jira_issue_fails_for_one_task(self, mock_collection, mock_retrieve_similar, mock_create_jira, mock_datetime_module):
         # --- Arrange ---
