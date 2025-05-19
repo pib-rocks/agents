@@ -197,6 +197,23 @@ def _get_initial_tool_descriptions() -> Dict[str, Dict[str, str]]:
         "set_tool_availability_for_agent": {
             "description": "Enables or disables a specific tool for a given agent. The tool must exist in the system. Requires 'agent_name', 'tool_name', and 'enable' (true to enable, false to disable).",
             "source_module": "tools.tool_manager"
+        },
+        # Confluence Tools
+        "create_confluence_page": {
+            "description": "Creates a new page in a Confluence space. Requires space key, title, and body. Optionally a parent page ID can be provided.",
+            "source_module": "tools.confluence_tools"
+        },
+        "get_confluence_page": {
+            "description": "Retrieves a Confluence page by its ID, or by its space key and title.",
+            "source_module": "tools.confluence_tools"
+        },
+        "update_confluence_page": {
+            "description": "Updates an existing Confluence page (e.g., title, body, parent). Requires page ID and the new data.",
+            "source_module": "tools.confluence_tools"
+        },
+        "delete_confluence_page": {
+            "description": "Deletes a Confluence page by its ID.",
+            "source_module": "tools.confluence_tools"
         }
     }
 
@@ -217,7 +234,9 @@ def _get_initial_agent_tool_assignments() -> Dict[str, List[str]]:
             "delete_test_case", "get_all_test_cases",
             "add_or_update_requirement_neo4j", "add_relationship_neo4j",
             "get_tool_description", "update_tool_description_in_db", # Meta-tools aus tool_description_manager
-            "list_available_tools_for_agent", "set_tool_availability_for_agent" # Meta-tools aus tool_manager
+            "list_available_tools_for_agent", "set_tool_availability_for_agent", # Meta-tools aus tool_manager
+            # Confluence Tools for Product-Owner
+            "create_confluence_page", "get_confluence_page", "update_confluence_page", "delete_confluence_page"
         ],
         "Developer": [
             "get_jira_issue_details", "update_jira_issue", "add_jira_comment",

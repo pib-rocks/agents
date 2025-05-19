@@ -63,6 +63,12 @@ from tools.tool_manager import ( # Importiere neue Werkzeugverwaltungsfunktionen
     list_available_tools_for_agent,
     set_tool_availability_for_agent
 )
+from tools.confluence_tools import ( # Importiere Confluence Werkzeuge
+    create_confluence_page,
+    get_confluence_page,
+    update_confluence_page,
+    delete_confluence_page
+)
 import importlib # Für dynamische Importe, falls benötigt, aber wir mappen direkt
 
 
@@ -110,6 +116,11 @@ AVAILABLE_TOOLS_MAP = {
     # Meta-Tools (Werkzeugverfügbarkeit verwalten)
     "list_available_tools_for_agent": list_available_tools_for_agent, # aus tool_manager
     "set_tool_availability_for_agent": set_tool_availability_for_agent, # aus tool_manager
+    # Confluence Tools
+    "create_confluence_page": create_confluence_page,
+    "get_confluence_page": get_confluence_page,
+    "update_confluence_page": update_confluence_page,
+    "delete_confluence_page": delete_confluence_page,
     # Google Search (obwohl nicht in der initialen Liste für PO, hier für Vollständigkeit, falls später hinzugefügt)
     "perform_google_search": perform_google_search
 }
