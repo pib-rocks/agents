@@ -353,27 +353,26 @@ __all__ = [
 def generate_jira_issues_for_requirement(
     requirement_id: str,
     project_key: str,
-    issue_type_name: str,#AI! The newly created issue should always be a story
     components: Optional[List[str]] = None,
     num_context_requirements: int = 3
 ) -> Dict:
     """
     Retrieves a requirement, gets context from similar requirements,
-    splits the requirement into actionable Jira issues, creates them,
-    and updates the original requirement with links to these issues.
+    splits the requirement into actionable Jira issues (always as "Story"),
+    creates them, and updates the original requirement with links to these issues.
 
     Args:
         requirement_id (str): The ID of the requirement to process.
         project_key (str): The Jira project key where issues will be created.
-        issue_type_name (str): The name of the Jira issue type (e.g., "Story", "Task").
         components (Optional[List[str]]): Optional list of component names for the Jira issues.
         num_context_requirements (int): Number of similar requirements to fetch for context.
 
     Returns:
         Dict: Status dictionary with a report, including created Jira issue keys and any errors.
     """
-    if not all([requirement_id, project_key, issue_type_name]):
-        return {"status": "error", "error_message": "Requirement ID, project key, and issue type name are required."}
+    issue_type_name = "Story" # Hardcoded as per instruction
+    if not all([requirement_id, project_key]):
+        return {"status": "error", "error_message": "Requirement ID and project key are required."}
 
     # 1. Retrieve the requirement
     try:

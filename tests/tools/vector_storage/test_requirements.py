@@ -588,7 +588,8 @@ class TestGenerateJiraIssuesForRequirement(unittest.TestCase):
     def setUp(self):
         self.requirement_id = "REQ-GEN-1"
         self.project_key = "PIB"
-        self.issue_type_name = "Story"
+        # self.issue_type_name = "Story" # No longer a parameter, but good to keep for expected value
+        self.expected_issue_type_name = "Story"
         self.components = ["cerebra", "pib-backend"]
         self.original_text_multiline = "Line 1 of requirement.\nLine 2 of requirement."
         self.original_text_singleline = "Single line requirement."
@@ -620,7 +621,6 @@ class TestGenerateJiraIssuesForRequirement(unittest.TestCase):
         result = generate_jira_issues_for_requirement(
             requirement_id=self.requirement_id,
             project_key=self.project_key,
-            issue_type_name=self.issue_type_name,
             components=self.components
         )
 
@@ -641,7 +641,7 @@ class TestGenerateJiraIssuesForRequirement(unittest.TestCase):
         self.assertIn("Line 1 of requirement.", first_call_args['description'])
         self.assertIn(self.original_text_multiline, first_call_args['description']) # Full original text
         self.assertIn("Found 1 similar req.", first_call_args['description']) # Context
-        self.assertEqual(first_call_args['issue_type_name'], self.issue_type_name)
+        self.assertEqual(first_call_args['issue_type_name'], self.expected_issue_type_name)
         self.assertEqual(first_call_args['components'], self.components)
 
         second_call_args = mock_create_jira.call_args_list[1][1]
@@ -669,8 +669,7 @@ class TestGenerateJiraIssuesForRequirement(unittest.TestCase):
         # --- Act ---
         result = generate_jira_issues_for_requirement(
             requirement_id=self.requirement_id,
-            project_key=self.project_key,
-            issue_type_name=self.issue_type_name
+            project_key=self.project_key
         )
 
         # --- Assert ---
@@ -691,8 +690,7 @@ class TestGenerateJiraIssuesForRequirement(unittest.TestCase):
         # --- Act ---
         result = generate_jira_issues_for_requirement(
             requirement_id="REQ-NOTFOUND",
-            project_key=self.project_key,
-            issue_type_name=self.issue_type_name
+            project_key=self.project_key
         )
 
         # --- Assert ---
@@ -715,8 +713,7 @@ class TestGenerateJiraIssuesForRequirement(unittest.TestCase):
         # --- Act ---
         result = generate_jira_issues_for_requirement(
             requirement_id=self.requirement_id,
-            project_key=self.project_key,
-            issue_type_name=self.issue_type_name
+            project_key=self.project_key
         )
 
         # --- Assert ---
@@ -740,8 +737,7 @@ class TestGenerateJiraIssuesForRequirement(unittest.TestCase):
         # --- Act ---
         result = generate_jira_issues_for_requirement(
             requirement_id=self.requirement_id,
-            project_key=self.project_key,
-            issue_type_name=self.issue_type_name
+            project_key=self.project_key
         )
 
         # --- Assert ---
@@ -772,8 +768,7 @@ class TestGenerateJiraIssuesForRequirement(unittest.TestCase):
         # --- Act ---
         result = generate_jira_issues_for_requirement(
             requirement_id=self.requirement_id,
-            project_key=self.project_key,
-            issue_type_name=self.issue_type_name
+            project_key=self.project_key
         )
 
         # --- Assert ---
@@ -799,8 +794,7 @@ class TestGenerateJiraIssuesForRequirement(unittest.TestCase):
         # --- Act ---
         result = generate_jira_issues_for_requirement(
             requirement_id=self.requirement_id,
-            project_key=self.project_key,
-            issue_type_name=self.issue_type_name
+            project_key=self.project_key
         )
 
         # --- Assert ---
@@ -825,8 +819,7 @@ class TestGenerateJiraIssuesForRequirement(unittest.TestCase):
         # --- Act ---
         result = generate_jira_issues_for_requirement(
             requirement_id=self.requirement_id,
-            project_key=self.project_key,
-            issue_type_name=self.issue_type_name
+            project_key=self.project_key
         )
 
         # --- Assert ---
@@ -840,20 +833,11 @@ class TestGenerateJiraIssuesForRequirement(unittest.TestCase):
         # --- Act & Assert for missing project_key ---
         result_no_proj = generate_jira_issues_for_requirement(
             requirement_id=self.requirement_id,
-            project_key="", # Empty project key
-            issue_type_name=self.issue_type_name
+            project_key="" # Empty project key
         )
         self.assertEqual(result_no_proj['status'], "error")
         self.assertIn("project key", result_no_proj['error_message'].lower())
-
-        # --- Act & Assert for missing issue_type_name ---
-        result_no_type = generate_jira_issues_for_requirement(
-            requirement_id=self.requirement_id,
-            project_key=self.project_key,
-            issue_type_name="" # Empty issue type
-        )
-        self.assertEqual(result_no_type['status'], "error")
-        self.assertIn("issue type name", result_no_type['error_message'].lower())
+        self.assertIn("requirement id", result_no_proj['error_message'].lower()) # Updated error message check
         
         mock_collection.get.assert_not_called() # Should fail before DB access
 
@@ -890,8 +874,7 @@ class TestGenerateJiraIssuesForRequirement(unittest.TestCase):
         # --- Act ---
         result = generate_jira_issues_for_requirement(
             requirement_id=self.requirement_id,
-            project_key=self.project_key,
-            issue_type_name=self.issue_type_name
+            project_key=self.project_key
         )
         
         # --- Assert ---
@@ -902,8 +885,7 @@ class TestGenerateJiraIssuesForRequirement(unittest.TestCase):
         
         result_after_create_attempt = generate_jira_issues_for_requirement(
             requirement_id=self.requirement_id,
-            project_key=self.project_key,
-            issue_type_name=self.issue_type_name
+            project_key=self.project_key
         )
 
         self.assertEqual(result_after_create_attempt['status'], "error") # Because create_jira_issue failed
@@ -936,8 +918,7 @@ class TestGenerateJiraIssuesForRequirement(unittest.TestCase):
         # --- Act ---
         result = generate_jira_issues_for_requirement(
             requirement_id=self.requirement_id,
-            project_key=self.project_key,
-            issue_type_name=self.issue_type_name
+            project_key=self.project_key
         )
         
         # --- Assert ---
@@ -959,8 +940,7 @@ class TestGenerateJiraIssuesForRequirement(unittest.TestCase):
         }
         generate_jira_issues_for_requirement(
             requirement_id=self.requirement_id,
-            project_key=self.project_key,
-            issue_type_name=self.issue_type_name
+            project_key=self.project_key
         )
         updated_meta_dup = mock_collection.upsert.call_args_list[-1][1]['metadatas'][0] # Get the latest call
         self.assertListEqual(updated_meta_dup['generated_jira_issues'], ["PIB-OLD-1"])
