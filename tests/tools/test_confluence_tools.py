@@ -100,7 +100,7 @@ class TestConfluenceTools(unittest.TestCase):
             "space": {"key": "TEST"},
             "body": {"storage": {"value": "<p>Test content</p>"}},
             "version": {"number": 2},
-            "_links": {"webui": "/display/TEST/Test+Page", "base": "https://test.atlassian.net/wiki"}#AI! This line is not interpreted correctly in this test-case, fix it
+            "_links": {"webui": "https://test.atlassian.net/wiki/display/TEST/Test+Page", "base": "https://test.atlassian.net/wiki"}
         }
         mock_response.json.return_value = mock_page_data
         mock_requests_get.return_value = mock_response
