@@ -94,38 +94,38 @@ root_agent = Agent(
     instruction=agent_instruction, # Load instruction from file
     tools=(lambda: [
         # Jira Tools
-        create_jira_issue,#AI! Move the remaining tool-descriptions from code-comments into the sql-database as it is for example already done with add_requirement.
-        get_jira_issue_details,
-        update_jira_issue,
-        add_jira_comment,
-        get_jira_comments,
-        show_jira_issue,
-        get_jira_transitions,
-        transition_jira_issue,
+        (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(create_jira_issue),
+        (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(get_jira_issue_details),
+        (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(update_jira_issue),
+        (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(add_jira_comment),
+        (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(get_jira_comments),
+        (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(show_jira_issue),
+        (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(get_jira_transitions),
+        (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(transition_jira_issue),
         # Vector DB Tools - Lade Beschreibungen dynamisch
         (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(add_requirement),
         (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(retrieve_similar_requirements),
         (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(update_requirement),
         (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(delete_requirement),
         (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(get_all_requirements),
-        generate_jira_issues_for_requirement,
-        # Acceptance Criteria Functions (nicht Teil der Anforderungs-Tools, daher keine Änderung der Beschreibung)
-        add_acceptance_criterion,
-        retrieve_similar_acceptance_criteria,
-        delete_acceptance_criterion,
-        update_acceptance_criterion,
-        get_all_acceptance_criteria,
-        # Test Case Functions (nicht Teil der Anforderungs-Tools, daher keine Änderung der Beschreibung)
-        add_test_case,
-        retrieve_similar_test_cases,
-        update_test_case,
-        delete_test_case,
-        get_all_test_cases,
+        (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(generate_jira_issues_for_requirement),
+        # Acceptance Criteria Functions - Lade Beschreibungen dynamisch
+        (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(add_acceptance_criterion),
+        (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(retrieve_similar_acceptance_criteria),
+        (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(delete_acceptance_criterion),
+        (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(update_acceptance_criterion),
+        (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(get_all_acceptance_criteria),
+        # Test Case Functions - Lade Beschreibungen dynamisch
+        (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(add_test_case),
+        (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(retrieve_similar_test_cases),
+        (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(update_test_case),
+        (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(delete_test_case),
+        (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(get_all_test_cases),
         # Neo4j Tools - Lade Beschreibungen dynamisch
         (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(add_or_update_requirement_neo4j),
         (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(add_relationship_neo4j),
         # Time Search Tool
-        search_jira_issues_by_time,
+        (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(search_jira_issues_by_time),
         # Working with tools
         get_tool_description,
         update_tool_description_in_db,
