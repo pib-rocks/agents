@@ -26,7 +26,7 @@ def create_confluence_page(space_key: str, title: str, body: str, parent_id: Opt
 def get_confluence_page(page_id: Optional[str] = None, space_key: Optional[str] = None, title: Optional[str] = None) -> Dict[str, Any]:
     """
     Retrieves a Confluence page by its ID, or by space key and title.
-    Requires CONFLUENCE_INSTANCE_URL, ATLASSIAN_EMAIL, CONFLUENCE_API_KEY environment variables.
+    Requires CONFLUENCE_INSTANCE_URL, ATLASSIAN_EMAIL, ATLASSIAN_API_KEY environment variables.
     Args:
         page_id (Optional[str]): The ID of the page to retrieve. (Prioritized if provided)
         space_key (Optional[str]): The key of the Confluence space (used with title if page_id is not given).
@@ -36,12 +36,12 @@ def get_confluence_page(page_id: Optional[str] = None, space_key: Optional[str] 
     """
     confluence_url = os.getenv("CONFLUENCE_INSTANCE_URL")
     atlassian_email = os.getenv("ATLASSIAN_EMAIL")
-    confluence_api_key = os.getenv("CONFLUENCE_API_KEY")#AI! Rename this to ATLASSIAN_API_KEY and use the same in jira_tools.py also, so that all of the atlassian-tools can be accessed with the same credentials
+    atlassian_api_key = os.getenv("ATLASSIAN_API_KEY")
 
-    if not all([confluence_url, atlassian_email, confluence_api_key]):
-        return {"status": "error", "message": "Confluence configuration (URL, Atlassian email, API key) missing in environment variables."}
+    if not all([confluence_url, atlassian_email, atlassian_api_key]):
+        return {"status": "error", "message": "Confluence configuration (URL, Atlassian email, Atlassian API key) missing in environment variables."}
 
-    auth = (atlassian_email, confluence_api_key)
+    auth = (atlassian_email, atlassian_api_key)
     headers = {"Accept": "application/json"}
     params = {"expand": "body.storage,version,space"} # Expand to get body, version and space details
 

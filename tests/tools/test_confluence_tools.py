@@ -88,7 +88,7 @@ class TestConfluenceTools(unittest.TestCase):
         mock_getenv.side_effect = lambda key: {
             "CONFLUENCE_INSTANCE_URL": "https://test.atlassian.net/wiki",
             "ATLASSIAN_EMAIL": "test@example.com",
-            "CONFLUENCE_API_KEY": "test_api_key"
+            "ATLASSIAN_API_KEY": "test_api_key"
         }.get(key)
 
         # Setup mock response from requests.get
@@ -124,7 +124,7 @@ class TestConfluenceTools(unittest.TestCase):
         mock_getenv.side_effect = lambda key: {
             "CONFLUENCE_INSTANCE_URL": "https://test.atlassian.net/wiki",
             "ATLASSIAN_EMAIL": "test@example.com",
-            "CONFLUENCE_API_KEY": "test_api_key"
+            "ATLASSIAN_API_KEY": "test_api_key"
         }.get(key)
 
         mock_response = MagicMock()
@@ -161,7 +161,7 @@ class TestConfluenceTools(unittest.TestCase):
         mock_getenv.return_value = None # Simulate missing env var
         result = get_confluence_page(page_id="123")
         self.assertEqual(result["status"], "error")
-        self.assertIn("Confluence configuration (URL, Atlassian email, API key) missing", result["message"])
+        self.assertIn("Confluence configuration (URL, Atlassian email, Atlassian API key) missing", result["message"])
 
     def test_get_confluence_page_insufficient_args(self):
         # This test doesn't need os.getenv or requests.get mocks as it fails earlier

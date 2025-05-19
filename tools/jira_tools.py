@@ -39,10 +39,10 @@ def create_jira_issue(
     """
     jira_url = os.getenv("JIRA_INSTANCE_URL")
     atlassian_email = os.getenv("ATLASSIAN_EMAIL")
-    jira_api_key = os.getenv("JIRA_API_KEY")
+    atlassian_api_key = os.getenv("ATLASSIAN_API_KEY")
 
-    if not all([jira_url, atlassian_email, jira_api_key]):
-        return {"status": "error", "error_message": "Jira configuration (URL, Atlassian email, API key) missing."}
+    if not all([jira_url, atlassian_email, atlassian_api_key]):
+        return {"status": "error", "error_message": "Jira configuration (URL, Atlassian email, Atlassian API key) missing."}
     if not all([project_key, summary, description, issue_type_name]):
         return {"status": "error", "error_message": "Project key, summary, description, and issue type name are required."}
 
@@ -58,7 +58,7 @@ def create_jira_issue(
             }
 
     api_url = f"{jira_url.rstrip('/')}/rest/api/3/issue"
-    auth = (atlassian_email, jira_api_key)
+    auth = (atlassian_email, atlassian_api_key)
     headers = {"Accept": "application/json", "Content-Type": "application/json"}
 
     payload_fields = {
@@ -130,10 +130,10 @@ def create_jira_subtask(
     """
     jira_url = os.getenv("JIRA_INSTANCE_URL")
     atlassian_email = os.getenv("ATLASSIAN_EMAIL")
-    jira_api_key = os.getenv("JIRA_API_KEY")
+    atlassian_api_key = os.getenv("ATLASSIAN_API_KEY")
 
-    if not all([jira_url, atlassian_email, jira_api_key]):
-        return {"status": "error", "error_message": "Jira configuration (URL, Atlassian email, API key) missing."}
+    if not all([jira_url, atlassian_email, atlassian_api_key]):
+        return {"status": "error", "error_message": "Jira configuration (URL, Atlassian email, Atlassian API key) missing."}
     if not parent_issue_key or not summary:
         return {"status": "error", "error_message": "Parent key and summary are required."}
 
@@ -148,7 +148,7 @@ def create_jira_subtask(
 
     # Need project key - fetch parent issue details to get it
     parent_details_url = f"{jira_url.rstrip('/')}/rest/api/3/issue/{parent_issue_key}?fields=project"
-    auth = (atlassian_email, jira_api_key)
+    auth = (atlassian_email, atlassian_api_key)
     headers = {"Accept": "application/json"}
     project_key = None
     try:
@@ -222,14 +222,14 @@ def get_jira_subtasks(parent_issue_key: str) -> dict:
     """
     jira_url = os.getenv("JIRA_INSTANCE_URL")
     atlassian_email = os.getenv("ATLASSIAN_EMAIL")
-    jira_api_key = os.getenv("JIRA_API_KEY")
+    atlassian_api_key = os.getenv("ATLASSIAN_API_KEY")
 
-    if not all([jira_url, atlassian_email, jira_api_key]):
-        return {"status": "error", "error_message": "Jira configuration (URL, Atlassian email, API key) missing."}
+    if not all([jira_url, atlassian_email, atlassian_api_key]):
+        return {"status": "error", "error_message": "Jira configuration (URL, Atlassian email, Atlassian API key) missing."}
 
     # Fetch parent issue details including the subtasks field
     api_url = f"{jira_url.rstrip('/')}/rest/api/3/issue/{parent_issue_key}?fields=subtasks"
-    auth = (atlassian_email, jira_api_key)
+    auth = (atlassian_email, atlassian_api_key)
     headers = {"Accept": "application/json"}
 
     try:
@@ -274,10 +274,10 @@ def delete_jira_issue(issue_key: str) -> dict:
     """
     jira_url = os.getenv("JIRA_INSTANCE_URL")
     atlassian_email = os.getenv("ATLASSIAN_EMAIL")
-    jira_api_key = os.getenv("JIRA_API_KEY")
+    atlassian_api_key = os.getenv("ATLASSIAN_API_KEY")
 
-    if not all([jira_url, atlassian_email, jira_api_key]):
-        return {"status": "error", "error_message": "Jira configuration (URL, Atlassian email, API key) missing."}
+    if not all([jira_url, atlassian_email, atlassian_api_key]):
+        return {"status": "error", "error_message": "Jira configuration (URL, Atlassian email, Atlassian API key) missing."}
     if not issue_key:
         return {"status": "error", "error_message": "Issue key cannot be empty."}
 
@@ -285,7 +285,7 @@ def delete_jira_issue(issue_key: str) -> dict:
     # For now, proceed directly based on agent call.
 
     api_url = f"{jira_url.rstrip('/')}/rest/api/3/issue/{issue_key}"
-    auth = (atlassian_email, jira_api_key)
+    auth = (atlassian_email, atlassian_api_key)
     headers = {"Accept": "application/json"}
 
     try:
@@ -386,13 +386,13 @@ def update_jira_issue(
     """
     jira_url = os.getenv("JIRA_INSTANCE_URL")
     atlassian_email = os.getenv("ATLASSIAN_EMAIL")
-    jira_api_key = os.getenv("JIRA_API_KEY")
+    atlassian_api_key = os.getenv("ATLASSIAN_API_KEY")
 
-    if not all([jira_url, atlassian_email, jira_api_key]):
+    if not all([jira_url, atlassian_email, atlassian_api_key]):
         return {
             "status": "error",
             "error_message": (
-                "Jira configuration (JIRA_INSTANCE_URL, ATLASSIAN_EMAIL, JIRA_API_KEY)" # Corrected here
+                "Jira configuration (JIRA_INSTANCE_URL, ATLASSIAN_EMAIL, ATLASSIAN_API_KEY)" 
                 " missing in environment variables."
             ),
         }
@@ -405,7 +405,7 @@ def update_jira_issue(
         }
 
     api_url = f"{jira_url.rstrip('/')}/rest/api/3/issue/{issue_id}"
-    auth = (atlassian_email, jira_api_key)
+    auth = (atlassian_email, atlassian_api_key)
     headers = {"Accept": "application/json", "Content-Type": "application/json"}
 
     payload_fields = {}
@@ -532,10 +532,10 @@ def search_jira_issues_by_time(
     """
     jira_url = os.getenv("JIRA_INSTANCE_URL")
     atlassian_email = os.getenv("ATLASSIAN_EMAIL")
-    jira_api_key = os.getenv("JIRA_API_KEY")
+    atlassian_api_key = os.getenv("ATLASSIAN_API_KEY")
 
-    if not all([jira_url, atlassian_email, jira_api_key]):
-        return {"status": "error", "error_message": "Jira configuration (URL, Atlassian email, API key) missing."}
+    if not all([jira_url, atlassian_email, atlassian_api_key]):
+        return {"status": "error", "error_message": "Jira configuration (URL, Atlassian email, Atlassian API key) missing."}
 
     if time_field not in ['created', 'updated']:
         return {"status": "error", "error_message": "Invalid time_field. Must be 'created' or 'updated'."}
@@ -563,7 +563,7 @@ def search_jira_issues_by_time(
     jql += " ORDER BY updated DESC" # Order by most recently updated by default
 
     api_url = f"{jira_url.rstrip('/')}/rest/api/3/search"
-    auth = (atlassian_email, jira_api_key)
+    auth = (atlassian_email, atlassian_api_key)
     headers = {"Accept": "application/json", "Content-Type": "application/json"}
     payload = {
         "jql": jql,
@@ -641,16 +641,16 @@ def get_jira_transitions(issue_id: str) -> dict:
     """
     jira_url = os.getenv("JIRA_INSTANCE_URL")
     atlassian_email = os.getenv("ATLASSIAN_EMAIL")
-    jira_api_key = os.getenv("JIRA_API_KEY")
+    atlassian_api_key = os.getenv("ATLASSIAN_API_KEY")
 
-    if not all([jira_url, atlassian_email, jira_api_key]):
+    if not all([jira_url, atlassian_email, atlassian_api_key]):
         return {
             "status": "error",
-            "error_message": "Jira configuration (URL, Atlassian email, API key) missing in environment variables.",
+            "error_message": "Jira configuration (URL, Atlassian email, Atlassian API key) missing in environment variables.",
         }
 
     api_url = f"{jira_url.rstrip('/')}/rest/api/3/issue/{issue_id}/transitions"
-    auth = (atlassian_email, jira_api_key)
+    auth = (atlassian_email, atlassian_api_key)
     headers = {"Accept": "application/json"}
 
     try:
@@ -696,19 +696,19 @@ def transition_jira_issue(issue_id: str, transition_id: str) -> dict:
     """
     jira_url = os.getenv("JIRA_INSTANCE_URL")
     atlassian_email = os.getenv("ATLASSIAN_EMAIL")
-    jira_api_key = os.getenv("JIRA_API_KEY")
+    atlassian_api_key = os.getenv("ATLASSIAN_API_KEY")
 
-    if not all([jira_url, atlassian_email, jira_api_key]):
+    if not all([jira_url, atlassian_email, atlassian_api_key]):
         return {
             "status": "error",
-            "error_message": "Jira configuration (URL, Atlassian email, API key) missing in environment variables.",
+            "error_message": "Jira configuration (URL, Atlassian email, Atlassian API key) missing in environment variables.",
         }
     if not transition_id:
         return {"status": "error", "error_message": "Transition ID cannot be empty."}
 
 
     api_url = f"{jira_url.rstrip('/')}/rest/api/3/issue/{issue_id}/transitions"
-    auth = (atlassian_email, jira_api_key)
+    auth = (atlassian_email, atlassian_api_key)
     headers = {"Accept": "application/json", "Content-Type": "application/json"}
     payload = {"transition": {"id": transition_id}}
 
@@ -757,13 +757,13 @@ def add_jira_comment(issue_id: str, comment_body: str) -> dict:
     """
     jira_url = os.getenv("JIRA_INSTANCE_URL")
     atlassian_email = os.getenv("ATLASSIAN_EMAIL")
-    jira_api_key = os.getenv("JIRA_API_KEY")
+    atlassian_api_key = os.getenv("ATLASSIAN_API_KEY")
 
-    if not all([jira_url, atlassian_email, jira_api_key]):
+    if not all([jira_url, atlassian_email, atlassian_api_key]):
         return {
             "status": "error",
             "error_message": (
-                "Jira configuration (JIRA_INSTANCE_URL, ATLASSIAN_EMAIL, JIRA_API_KEY)" # Corrected here
+                "Jira configuration (JIRA_INSTANCE_URL, ATLASSIAN_EMAIL, ATLASSIAN_API_KEY)" 
                 " missing in environment variables."
             ),
         }
@@ -772,7 +772,7 @@ def add_jira_comment(issue_id: str, comment_body: str) -> dict:
         return {"status": "error", "error_message": "Comment body cannot be empty."}
 
     api_url = f"{jira_url.rstrip('/')}/rest/api/3/issue/{issue_id}/comment"
-    auth = (atlassian_email, jira_api_key)
+    auth = (atlassian_email, atlassian_api_key)
     headers = {"Accept": "application/json", "Content-Type": "application/json"}
 
     # Construct comment body in ADF format
@@ -853,19 +853,19 @@ def get_jira_comments(issue_id: str) -> dict:
     """
     jira_url = os.getenv("JIRA_INSTANCE_URL")
     atlassian_email = os.getenv("ATLASSIAN_EMAIL")
-    jira_api_key = os.getenv("JIRA_API_KEY")
+    atlassian_api_key = os.getenv("ATLASSIAN_API_KEY")
 
-    if not all([jira_url, atlassian_email, jira_api_key]):
+    if not all([jira_url, atlassian_email, atlassian_api_key]):
         return {
             "status": "error",
             "error_message": (
-                "Jira configuration (JIRA_INSTANCE_URL, ATLASSIAN_EMAIL, JIRA_API_KEY)" # Corrected here
+                "Jira configuration (JIRA_INSTANCE_URL, ATLASSIAN_EMAIL, ATLASSIAN_API_KEY)" 
                 " missing in environment variables."
             ),
         }
 
     api_url = f"{jira_url.rstrip('/')}/rest/api/3/issue/{issue_id}/comment"
-    auth = (atlassian_email, jira_api_key)
+    auth = (atlassian_email, atlassian_api_key)
     headers = {"Accept": "application/json"}
 
     try:
@@ -954,13 +954,13 @@ def get_jira_issue_details(issue_id: str) -> dict:
     """
     jira_url = os.getenv("JIRA_INSTANCE_URL")
     atlassian_email = os.getenv("ATLASSIAN_EMAIL")
-    jira_api_key = os.getenv("JIRA_API_KEY")
+    atlassian_api_key = os.getenv("ATLASSIAN_API_KEY")
 
-    if not all([jira_url, atlassian_email, jira_api_key]):
+    if not all([jira_url, atlassian_email, atlassian_api_key]):
         return {
             "status": "error",
             "error_message": (
-                "Jira configuration (JIRA_INSTANCE_URL, ATLASSIAN_EMAIL, JIRA_API_KEY)" # Corrected here
+                "Jira configuration (JIRA_INSTANCE_URL, ATLASSIAN_EMAIL, ATLASSIAN_API_KEY)" 
                 " missing in environment variables."
             ),
         }
@@ -968,7 +968,7 @@ def get_jira_issue_details(issue_id: str) -> dict:
     # Request the category custom field along with standard fields
     fields_to_request = f"summary,status,assignee,description,{CUSTOM_FIELD_CATEGORY_ID}"
     api_url = f"{jira_url.rstrip('/')}/rest/api/3/issue/{issue_id}?fields={fields_to_request}"
-    auth = (atlassian_email, jira_api_key)
+    auth = (atlassian_email, atlassian_api_key)
     headers = {"Accept": "application/json"}
 
     try:
