@@ -8,7 +8,7 @@ def add_agent_feature(task_description: str, files_to_edit: Optional[List[str]] 
     """
     Triggers aider to add or modify features by writing a task to a trigger file.
     This function creates/overwrites 'aider-trigger.py' in the project's root directory.
-    The content of this file will be the 'task_description' prefixed with "#AI! ".
+    The content of this file will be the 'task_description'.
     Aider should be running in watch mode (e.g., `aider --watch aider-trigger.py`)
     to detect changes to this file and act upon the task.
 
@@ -27,7 +27,7 @@ def add_agent_feature(task_description: str, files_to_edit: Optional[List[str]] 
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     trigger_file_path = os.path.join(project_root, "aider-trigger.py")
     formatted_task_description = f"""{task_description}"""
-    content = f"#AI! {formatted_task_description}"
+    content = f"{formatted_task_description}"
 
     try:
         with open(trigger_file_path, 'w') as f:
