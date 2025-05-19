@@ -45,7 +45,7 @@ def get_confluence_page(page_id: Optional[str] = None, space_key: Optional[str] 
     headers = {"Accept": "application/json"}
     params = {"expand": "body.storage,version,space"} # Expand to get body, version and space details
 
-    api_base_url = f"{atlassian_instance_url.rstrip('/')}/rest/api/content"
+    api_base_url = f"{atlassian_instance_url.rstrip('/')}/wiki/rest/api/content"
 
     if page_id:
         api_url = f"{api_base_url}/{page_id}"
