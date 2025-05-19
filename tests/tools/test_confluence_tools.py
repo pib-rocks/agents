@@ -163,13 +163,20 @@ class TestConfluenceTools(unittest.TestCase):
         self.assertEqual(result["status"], "error")
         self.assertIn("Atlassian instance configuration (URL, email, API key) missing", result["message"])
 
-    def test_get_confluence_page_insufficient_args(self):
-        # This test doesn't need os.getenv or requests.get mocks as it fails earlier
+    @patch('os.getenv') # Mock os.getenv for this test
+    def test_get_confluence_page_insufficient_args(self, mock_getenv):
+        # Configure mock_getenv to return valid values so the env var check passes
+        mock_getenv.side_effect = lambda key: {
+            "ATLASSIAN_INSTANCE_URL": "https://test.atlassian.net/wiki",
+            "ATLASSIAN_EMAIL": "test@example.com",
+            "ATLASSIAN_API_KEY": "test_api_key"
+        }.get(key, "dummy_value") # Provide a default to avoid None if a new getenv is added
+
         result_no_page_id_no_title = get_confluence_page(space_key="MYSAPCE")
         self.assertEqual(result_no_page_id_no_title["status"], "error")
-        self.assertIn("Either page_id or both space_key and title must be provided.", result_no_page_id_no_title["message"])#AI! This assertion works locally but fails on github. The error is: AssertionError: 'Either page_id or both space_key and title must be provided.' not found in 'Atlassian instance configuration (URL, email, API key) missing in environment variables.'. Fix it!
+        self.assertIn("Either page_id or both space_key and title must be provided.", result_no_page_id_no_title["message"])
 
-        result_no_args = get_confluence_page()
+        result_no_args = get_confluence_page() # This call will also use the mocked getenv
         self.assertEqual(result_no_args["status"], "error")
         self.assertIn("Either page_id or both space_key and title must be provided.", result_no_args["message"])
 
