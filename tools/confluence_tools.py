@@ -20,7 +20,7 @@ def create_confluence_page(space_key: str, title: str, body: str, parent_id: Opt
     new_page_id = "12345" # Beispiel-ID
     return {"status": "success", "message": f"Confluence page '{title}' created successfully in space '{space_key}' with ID '{new_page_id}'.", "page_id": new_page_id}
 
-def get_confluence_page(page_id: str, space_key: Optional[str] = None, title: Optional[str] = None) -> Dict[str, any]:
+def get_confluence_page(page_id: str, space_key: Optional[str] = None, title: Optional[str] = None) -> Dict[str, any]:#AI! Actually implement this method productively by taking the credentials similarly to the approach done in jira_tools.py
     """
     Retrieves a Confluence page by its ID, or by space key and title.
     Args:
