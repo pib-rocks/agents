@@ -114,7 +114,7 @@ root_agent = Agent(
         (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(retrieve_similar_acceptance_criteria),
         (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(delete_acceptance_criterion),
         (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(update_acceptance_criterion),
-        (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(get_all_acceptance_criteria),
+        (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(get_all_acceptance_criteria),#AI! Currently, the avaiable tools for the two agnts "Product-Owner" and "Developer" are hardcoded in the files agent.py. Move these hardcoded settings to the same database, that already stores the tool-descriptions so that it can be configured per Agent though the database.
         # Test Case Functions - Lade Beschreibungen dynamisch
         (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(add_test_case),
         (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(retrieve_similar_test_cases),
