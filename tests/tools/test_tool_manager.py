@@ -174,8 +174,8 @@ class TestToolManager(unittest.TestCase):
         self.assertIn(f"Werkzeug '{NON_EXISTENT_TOOL}' nicht im System gefunden.", result["message"])
 
     def test_set_db_error_during_enable(self):
-        mock_conn = MagicMock()
-        mock_cursor = MagicMock()
+        mock_conn = MagicMock(spec=sqlite3.Connection)
+        mock_cursor = MagicMock(spec=sqlite3.Cursor)
         # Erster Aufruf (Werkzeug existiert) ist ok
         mock_cursor.fetchone.return_value = (TOOL_1,)
 
@@ -195,8 +195,8 @@ class TestToolManager(unittest.TestCase):
         self.assertIn("Datenbankfehler", result["message"])
 
     def test_set_db_error_during_disable(self):
-        mock_conn = MagicMock()
-        mock_cursor = MagicMock()
+        mock_conn = MagicMock(spec=sqlite3.Connection)
+        mock_cursor = MagicMock(spec=sqlite3.Cursor)
         # Erster Aufruf (Werkzeug existiert) ist ok
         mock_cursor.fetchone.return_value = (TOOL_1,)
 
