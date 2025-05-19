@@ -187,7 +187,7 @@ class TestToolManager(unittest.TestCase):
         mock_cursor.execute.side_effect = execute_raiser_insert_side_effect
         mock_conn.cursor.return_value = mock_cursor
         mock_conn.__enter__ = MagicMock(return_value=mock_cursor) # Für den with conn: Block
-        mock_conn.__exit__ = MagicMock()
+        mock_conn.__exit__ = MagicMock(return_value=None) # Sicherstellen, dass Exceptions weitergegeben werden
         self.mock_get_db_connection.return_value = mock_conn
 
         result = set_tool_availability_for_agent(TEST_AGENT_1, TOOL_1, True)
@@ -208,7 +208,7 @@ class TestToolManager(unittest.TestCase):
         mock_cursor.execute.side_effect = execute_raiser_delete_side_effect
         mock_conn.cursor.return_value = mock_cursor
         mock_conn.__enter__ = MagicMock(return_value=mock_cursor) # Für den with conn: Block
-        mock_conn.__exit__ = MagicMock()
+        mock_conn.__exit__ = MagicMock(return_value=None) # Sicherstellen, dass Exceptions weitergegeben werden
         self.mock_get_db_connection.return_value = mock_conn
 
         result = set_tool_availability_for_agent(TEST_AGENT_1, TOOL_1, False)
