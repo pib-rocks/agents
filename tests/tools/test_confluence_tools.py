@@ -48,27 +48,235 @@ class TestConfluenceTools(unittest.TestCase):
         self.assertIn("page_id", result)
         mock_print.assert_called_once_with(f"Attempting to create Confluence page: Space='{space_key}', Title='{title}', ParentID='{None}'")
 
-    @patch('builtins.print')
-    def test_update_confluence_page(self, mock_print):
-        page_id = "67890"
-        new_title = "Updated Page Title"
-        new_body = "Updated body content."
-        
-        result = update_confluence_page(page_id, new_title=new_title, new_body=new_body)
-        
+    # --- Tests for update_confluence_page (implemented function) ---
+
+    def _setup_mock_env_vars(self, mock_getenv):
+        mock_getenv.side_effect = lambda key, default=None: {
+            "ATLASSIAN_INSTANCE_URL": "https://test.atlassian.net",
+            "ATLASSIAN_EMAIL": "test@example.com",
+            "ATLASSIAN_API_KEY": "test_api_key"
+        }.get(key, default)
+
+    @patch('requests.put')
+    @patch('tools.confluence_tools.get_confluence_page')
+    @patch('os.getenv')
+    def test_update_page_success_all_fields(self, mock_getenv, mock_get_confluence_page, mock_requests_put):
+        self._setup_mock_env_vars(mock_getenv)
+        page_id = "test_page_123"
+        current_version = 2
+        new_title = "New Awesome Title"
+        new_body = "<p>New awesome body</p>"
+        new_parent_id = "parent_page_789"
+        version_comment = "Major update with all fields"
+
+        mock_get_confluence_page.return_value = {
+            "status": "success", "page_id": page_id, "title": "Old Title", 
+            "version": current_version, "body": "<p>Old Body</p>"
+        }
+
+        mock_put_response = MagicMock()
+        mock_put_response.status_code = 200
+        mock_put_response.json.return_value = {
+            "id": page_id, "title": new_title, 
+            "version": {"number": current_version + 1},
+            "_links": {"webui": "/wiki/display/SPACE/New+Awesome+Title", "base": "https://test.atlassian.net"}
+        }
+        mock_requests_put.return_value = mock_put_response
+
+        result = update_confluence_page(page_id, new_title=new_title, new_body=new_body, new_parent_id=new_parent_id, version_comment=version_comment)
+
         self.assertEqual(result["status"], "success")
-        self.assertIn(f"Confluence page ID '{page_id}' updated successfully.", result["message"])
-        mock_print.assert_called_once_with(f"Attempting to update Confluence page ID: '{page_id}' with Title='{new_title}', ParentID='{None}'")
+        self.assertEqual(result["page_id"], page_id)
+        self.assertEqual(result["title"], new_title)
+        self.assertEqual(result["version"], current_version + 1)
+        self.assertEqual(result["link"], "https://test.atlassian.net/wiki/display/SPACE/New+Awesome+Title")
+        self.assertIn(f"updated successfully to version {current_version + 1}", result["message"])
 
-    @patch('builtins.print')
-    def test_update_confluence_page_no_changes(self, mock_print):
-        page_id = "67890"
-        result = update_confluence_page(page_id)
+        mock_get_confluence_page.assert_called_once_with(page_id=page_id)
+        mock_requests_put.assert_called_once()
         
-        self.assertEqual(result["status"], "info")
-        self.assertIn("No changes provided for update.", result["message"])
-        mock_print.assert_called_once_with(f"Attempting to update Confluence page ID: '{page_id}' with Title='{None}', ParentID='{None}'")
+        called_url = mock_requests_put.call_args[0][0]
+        self.assertTrue(called_url.endswith(f"/wiki/rest/api/content/{page_id}"))
+        
+        sent_payload = json.loads(mock_requests_put.call_args[1]['data'])
+        self.assertEqual(sent_payload["title"], new_title)
+        self.assertEqual(sent_payload["body"]["storage"]["value"], new_body)
+        self.assertEqual(sent_payload["ancestors"][0]["id"], new_parent_id)
+        self.assertEqual(sent_payload["version"]["number"], current_version + 1)
+        self.assertEqual(sent_payload["version"]["message"], version_comment)
 
+    @patch('requests.put')
+    @patch('tools.confluence_tools.get_confluence_page')
+    @patch('os.getenv')
+    def test_update_page_success_only_title(self, mock_getenv, mock_get_confluence_page, mock_requests_put):
+        self._setup_mock_env_vars(mock_getenv)
+        page_id = "test_page_456"
+        current_version = 1
+        new_title = "Just a New Title"
+        
+        mock_get_confluence_page.return_value = {
+            "status": "success", "page_id": page_id, "title": "Old Title", "version": current_version
+        }
+        mock_put_response = MagicMock()
+        mock_put_response.status_code = 200
+        mock_put_response.json.return_value = {
+            "id": page_id, "title": new_title, "version": {"number": current_version + 1},
+            "_links": {"webui": "/display/SPACE/Just+a+New+Title"} # Test relative link
+        }
+        mock_requests_put.return_value = mock_put_response
+
+        result = update_confluence_page(page_id, new_title=new_title)
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["title"], new_title)
+        self.assertEqual(result["link"], "https://test.atlassian.net/display/SPACE/Just+a+New+Title")
+        sent_payload = json.loads(mock_requests_put.call_args[1]['data'])
+        self.assertEqual(sent_payload["title"], new_title)
+        self.assertNotIn("body", sent_payload)
+        self.assertNotIn("ancestors", sent_payload)
+
+    @patch('os.getenv')
+    def test_update_page_env_vars_missing(self, mock_getenv):
+        mock_getenv.return_value = None # Simulate one var missing is enough
+        result = update_confluence_page("any_id", new_title="Some Title")
+        self.assertEqual(result["status"], "error")
+        self.assertIn("Atlassian instance configuration", result["message"])
+
+    @patch('os.getenv')
+    def test_update_page_no_page_id(self, mock_getenv):
+        self._setup_mock_env_vars(mock_getenv)
+        result = update_confluence_page(page_id="", new_title="Some Title")
+        self.assertEqual(result["status"], "error")
+        self.assertIn("Page ID must be provided", result["message"])
+        
+        result_none = update_confluence_page(page_id=None, new_title="Some Title")
+        self.assertEqual(result_none["status"], "error")
+        self.assertIn("Page ID must be provided", result_none["message"])
+
+
+    @patch('os.getenv')
+    def test_update_page_no_changes_provided(self, mock_getenv):
+        self._setup_mock_env_vars(mock_getenv)
+        page_id = "test_page_789"
+        # No call to get_confluence_page or requests.put should happen
+        result = update_confluence_page(page_id)
+        self.assertEqual(result["status"], "info")
+        self.assertIn("No changes provided for update", result["message"])
+
+    @patch('tools.confluence_tools.get_confluence_page')
+    @patch('os.getenv')
+    def test_update_page_get_page_details_fails(self, mock_getenv, mock_get_confluence_page):
+        self._setup_mock_env_vars(mock_getenv)
+        page_id = "test_page_000"
+        mock_get_confluence_page.return_value = {"status": "error", "message": "Failed to get page"}
+        
+        result = update_confluence_page(page_id, new_title="A Title")
+        self.assertEqual(result["status"], "error")
+        self.assertIn(f"Failed to retrieve current page details for page ID '{page_id}'", result["message"])
+        self.assertIn("Failed to get page", result["message"])
+
+    @patch('tools.confluence_tools.get_confluence_page')
+    @patch('os.getenv')
+    def test_update_page_get_page_details_no_version(self, mock_getenv, mock_get_confluence_page):
+        self._setup_mock_env_vars(mock_getenv)
+        page_id = "test_page_111"
+        mock_get_confluence_page.return_value = {
+            "status": "success", "page_id": page_id, "title": "Old Title", "version": None # Missing version
+        }
+        result = update_confluence_page(page_id, new_title="A Title")
+        self.assertEqual(result["status"], "error")
+        self.assertIn(f"Could not determine current version for page ID '{page_id}'", result["message"])
+
+    @patch('requests.put')
+    @patch('tools.confluence_tools.get_confluence_page')
+    @patch('os.getenv')
+    def test_update_page_put_request_http_error_400_detailed_msg(self, mock_getenv, mock_get_confluence_page, mock_requests_put):
+        self._setup_mock_env_vars(mock_getenv)
+        page_id = "test_page_222"
+        current_version = 1
+        mock_get_confluence_page.return_value = {"status": "success", "version": current_version, "title": "Old"}
+
+        mock_error_response = MagicMock()
+        mock_error_response.status_code = 400
+        # Simulate Confluence's more complex error structure
+        error_json = {
+            "statusCode": 400,
+            "data": {
+                "errors": [
+                    {
+                        "message": {
+                            "key": "some.error.key",
+                            "args": ["details about error"]
+                        }
+                    }
+                ],
+                "authorized": False, "valid": True, "allowedInReadOnlyMode": True, "successful": False
+            },
+            "message": "com.atlassian.confluence.api.service.exceptions.BadRequestException: ..." # Top level message
+        }
+        mock_error_response.json.return_value = error_json
+        mock_error_response.text = json.dumps(error_json) # For the raw text part
+        mock_requests_put.side_effect = requests.exceptions.HTTPError(response=mock_error_response)
+
+        result = update_confluence_page(page_id, new_title="Trigger Error")
+        self.assertEqual(result["status"], "error")
+        self.assertIn(f"HTTP error updating Confluence page ID '{page_id}'", result["message"])
+        self.assertIn("Details: com.atlassian.confluence.api.service.exceptions.BadRequestException", result["message"]) # Checks if top-level message is used
+        self.assertEqual(result["response_status_code"], 400)
+
+    @patch('requests.put')
+    @patch('tools.confluence_tools.get_confluence_page')
+    @patch('os.getenv')
+    def test_update_page_put_request_http_error_401(self, mock_getenv, mock_get_confluence_page, mock_requests_put):
+        self._setup_mock_env_vars(mock_getenv)
+        page_id = "test_page_333"
+        current_version = 3
+        mock_get_confluence_page.return_value = {"status": "success", "version": current_version, "title": "Old"}
+
+        mock_error_response = MagicMock()
+        mock_error_response.status_code = 401
+        mock_error_response.json.return_value = {"message": "Authentication failed"}
+        mock_error_response.text = '{"message": "Authentication failed"}'
+        mock_requests_put.side_effect = requests.exceptions.HTTPError(response=mock_error_response)
+
+        result = update_confluence_page(page_id, new_body="Update attempt")
+        self.assertEqual(result["status"], "error")
+        self.assertIn("Authentication failed", result["message"])
+        self.assertEqual(result["response_status_code"], 401)
+
+    @patch('requests.put')
+    @patch('tools.confluence_tools.get_confluence_page')
+    @patch('os.getenv')
+    def test_update_page_put_request_http_error_non_json_response(self, mock_getenv, mock_get_confluence_page, mock_requests_put):
+        self._setup_mock_env_vars(mock_getenv)
+        page_id = "test_page_444"
+        current_version = 1
+        mock_get_confluence_page.return_value = {"status": "success", "version": current_version, "title": "Old"}
+
+        mock_error_response = MagicMock()
+        mock_error_response.status_code = 500
+        mock_error_response.json.side_effect = json.JSONDecodeError("Error", "doc", 0) # Simulate non-JSON response
+        mock_error_response.text = "Internal Server Error HTML page"
+        mock_requests_put.side_effect = requests.exceptions.HTTPError(response=mock_error_response)
+
+        result = update_confluence_page(page_id, new_title="Trigger 500")
+        self.assertEqual(result["status"], "error")
+        self.assertIn(f"HTTP error updating Confluence page ID '{page_id}'", result["message"])
+        self.assertIn("Raw response: Internal Server Error HTML page", result["message"])
+        self.assertEqual(result["response_status_code"], 500)
+
+    @patch('requests.put')
+    @patch('tools.confluence_tools.get_confluence_page')
+    @patch('os.getenv')
+    def test_update_page_put_request_exception(self, mock_getenv, mock_get_confluence_page, mock_requests_put):
+        self._setup_mock_env_vars(mock_getenv)
+        page_id = "test_page_555"
+        current_version = 1
+        mock_get_confluence_page.return_value = {"status": "success", "version": current_version, "title": "Old"}
+        mock_requests_put.side_effect = requests.exceptions.Timeout("Connection timed out")
+
+        result = update_confluence_page(page_id, new_title="Trigger Timeout")
+        self.assertEqual(result["status"], "error")
+        self.assertIn(f"Request error updating Confluence page ID '{page_id}': Connection timed out", result["message"])
 
     @patch('builtins.print')
     def test_delete_confluence_page(self, mock_print):
