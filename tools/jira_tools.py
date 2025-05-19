@@ -516,6 +516,8 @@ def search_jira_issues_by_time(
 
 
 __all__ = [
+    # General issue creation
+    'create_jira_issue',
     # Sub-task tools
     'create_jira_subtask',
     'get_jira_subtasks',
