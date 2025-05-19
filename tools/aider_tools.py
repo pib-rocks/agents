@@ -1,6 +1,8 @@
 import os
 from typing import Dict, List, Optional
 
+AIDER_PREFIX = "aaa"
+
 # Set environment variables for aider if not already set, e.g., AIDER_MODEL
 # os.environ['AIDER_MODEL'] = os.getenv('GEMINI_MODEL_NAME', 'gemini-1.5-flash') # Example
 
@@ -26,7 +28,7 @@ def add_agent_feature(task_description: str, files_to_edit: Optional[List[str]] 
     """
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     trigger_file_path = os.path.join(project_root, "aider-trigger.py")
-    content = f"""\"\"\"\n{task_description}\n\"\"\""""#AI! Add a constant string "aaa", which is defined at the top of this file, before the task_description
+    content = f"""\"\"\"\n{AIDER_PREFIX}{task_description}\n\"\"\""""
 
     try:
         with open(trigger_file_path, 'w') as f:
