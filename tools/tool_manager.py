@@ -49,8 +49,8 @@ def list_available_tools_for_agent(agent_name: str) -> List[Dict[str, str]]:
         print(f"Datenbankfehler in list_available_tools_for_agent für '{agent_name}': {e}")
         return [{"error": f"Auflisten verfügbarer Werkzeuge für Agent '{agent_name}' aufgrund eines Datenbankfehlers fehlgeschlagen: {e}"}]
     finally:
-        if conn:
-            conn.close()
+        # Die Verbindung wird vom Aufrufer geschlossen, der _get_db_connection verwendet hat.
+        pass
 
 def set_tool_availability_for_agent(agent_name: str, tool_name: str, enable: bool) -> Dict[str, str]:
     """
@@ -103,7 +103,7 @@ def set_tool_availability_for_agent(agent_name: str, tool_name: str, enable: boo
         print(f"Datenbankfehler in set_tool_availability_for_agent für '{agent_name}', Werkzeug '{tool_name}': {e}")
         return {"status": "error", "message": f"Datenbankfehler: {e}"}
     finally:
-        if conn:
-            conn.close()
+        # Die Verbindung wird vom Aufrufer geschlossen, der _get_db_connection verwendet hat.
+        pass
 
 __all__ = ['list_available_tools_for_agent', 'set_tool_availability_for_agent']

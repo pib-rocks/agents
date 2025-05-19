@@ -178,11 +178,13 @@ class TestToolManager(unittest.TestCase):
         mock_cursor = MagicMock()
         # Erster Aufruf (Werkzeug existiert) ist ok
         mock_cursor.fetchone.return_value = (TOOL_1,)
-        # Zweiter Aufruf (INSERT) schlägt fehl
-        mock_cursor.execute.side_effect = [
-            None, # Für SELECT 1 FROM tool_descriptions
-            sqlite3.Error("Simulierter DB Fehler bei INSERT")
-        ]
+
+        def execute_raiser_insert_side_effect(sql_query, params=None):
+            if "INSERT INTO" in sql_query.upper() or "VALUES" in sql_query.upper() : # Allgemeiner für INSERT
+                raise sqlite3.Error("Simulierter DB Fehler bei INSERT")
+            return None # Für SELECTs
+
+        mock_cursor.execute.side_effect = execute_raiser_insert_side_effect
         mock_conn.cursor.return_value = mock_cursor
         mock_conn.__enter__ = MagicMock(return_value=mock_cursor) # Für den with conn: Block
         mock_conn.__exit__ = MagicMock()
@@ -197,11 +199,13 @@ class TestToolManager(unittest.TestCase):
         mock_cursor = MagicMock()
         # Erster Aufruf (Werkzeug existiert) ist ok
         mock_cursor.fetchone.return_value = (TOOL_1,)
-         # Zweiter Aufruf (DELETE) schlägt fehl
-        mock_cursor.execute.side_effect = [
-            None, # Für SELECT 1 FROM tool_descriptions
-            sqlite3.Error("Simulierter DB Fehler bei DELETE")
-        ]
+
+        def execute_raiser_delete_side_effect(sql_query, params=None):
+            if "DELETE FROM" in sql_query.upper():
+                raise sqlite3.Error("Simulierter DB Fehler bei DELETE")
+            return None # Für SELECTs
+
+        mock_cursor.execute.side_effect = execute_raiser_delete_side_effect
         mock_conn.cursor.return_value = mock_cursor
         mock_conn.__enter__ = MagicMock(return_value=mock_cursor) # Für den with conn: Block
         mock_conn.__exit__ = MagicMock()
