@@ -115,7 +115,7 @@ def get_confluence_page(page_id: Optional[str] = None, space_key: Optional[str] 
 
 def update_confluence_page(page_id: str, new_title: Optional[str] = None, new_body: Optional[str] = None, new_parent_id: Optional[str] = None, version_comment: Optional[str] = "Updated via API") -> Dict[str, str]:
     """
-    Updates an existing Confluence page (title, body, or parent).
+    Updates an existing Confluence page (title, body, or parent).#AI! Create the actual functionality to update a confluence page. Use the authentication from get_fonfluence_page. 
     Args:
         page_id (str): The ID of the page to update.
         new_title (Optional[str]): The new title for the page.
