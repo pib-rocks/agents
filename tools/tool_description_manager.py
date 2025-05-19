@@ -214,6 +214,21 @@ def _get_initial_tool_descriptions() -> Dict[str, Dict[str, str]]:
         "delete_confluence_page": {
             "description": "Deletes a Confluence page by its ID.",
             "source_module": "tools.confluence_tools"
+        },
+        # Aider Tool
+        "add_agent_feature": {
+            "description": "Uses the 'aider' CLI tool to interactively add or modify code in the agent system. "
+            "Args: task_description (str): A clear and concise instruction for the 'aider' code generation tool. This description should precisely define the coding task. It's crucial to: "
+            "- Be specific about the desired outcome: e.g., 'Add a Python function my_function(arg1) to file.py that [describe functionality].' or 'Modify the class MyClass in src/module.py to include a new method new_method() which [describe behavior].' "
+            "- Focus on the code generation task: The description is directly passed to aider. Phrase it as what aider should do in terms of code. For example, instead of 'I need a git push feature', use 'Add a method git_push to filename.py that executes the 'git push' shell command.'"
+            "- Avoid ambiguity: Ensure that descriptions of the code's behavior are part of the instruction for code generation, not phrased as if they are command-line arguments for aider itself. files_to_edit (list[str], optional): A list of file paths for aider to focus on or add to its context. Specifying target files is highly recommended (e.g., ['aider_tools.py'])."
+            "Returns: "
+            "dict: A dictionary containing the output from the 'aider' tool, which may include generated code, confirmations, errors, or requests for clarification. The structure typically includes: "
+            "- 'status': 'success' or 'error'. "
+            "- 'output': The STDOUT/STDERR from the aider process. "
+            "- 'message': A summary message of the operation."
+            "Interaction Notes: The 'aider' tool is interactive. It may ask for clarifications or approval for its proposed changes. The tool's output will include aider's responses and any requests for further input. You might need to run this tool again with a refined task_description if aider requires more guidance or if the initial instructions were not precise enough. ",
+            "source_module": "tools.aider_tools"
         }
     }
 
@@ -236,13 +251,15 @@ def _get_initial_agent_tool_assignments() -> Dict[str, List[str]]:
             "get_tool_description", "update_tool_description_in_db", # Meta-tools aus tool_description_manager
             "list_available_tools_for_agent", "set_tool_availability_for_agent", # Meta-tools aus tool_manager
             # Confluence Tools for Product-Owner
-            "create_confluence_page", "get_confluence_page", "update_confluence_page", "delete_confluence_page"
+            "create_confluence_page", "get_confluence_page", "update_confluence_page", "delete_confluence_page",
+            "add_agent_feature" # Add the aider tool for Product-Owner
         ],
         "Developer": [
             "get_jira_issue_details", "update_jira_issue", "add_jira_comment",
             "get_jira_comments", "show_jira_issue", "get_jira_transitions",
             "transition_jira_issue", "create_jira_subtask", "get_jira_subtasks",
-            "delete_jira_issue", "perform_google_search"
+            "delete_jira_issue", "perform_google_search",
+            "add_agent_feature" # Add the new aider tool
         ]
     }
 

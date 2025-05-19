@@ -23,6 +23,7 @@ from tools.jira_tools import (
     get_jira_subtasks,   # Add sub-task tool
     delete_jira_issue,   # Add sub-task tool
 )
+from tools.aider_tools import add_agent_feature # Import the new aider tool
 # Importiere die Funktionen zum Laden von Werkzeugbeschreibungen und Agenten-Tools
 from tools.tool_description_manager import (
     get_tool_description,
@@ -50,6 +51,8 @@ AVAILABLE_TOOLS_MAP = {
     "delete_jira_issue": delete_jira_issue,
     # Google Search
     "perform_google_search": perform_google_search,
+    # Aider Tool
+    "add_agent_feature": add_agent_feature,
 }
 
 def load_configured_tools_for_agent(agent_name: str) -> list:

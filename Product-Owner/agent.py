@@ -69,6 +69,7 @@ from tools.confluence_tools import ( # Importiere Confluence Werkzeuge
     update_confluence_page,
     delete_confluence_page
 )
+from tools.aider_tools import add_agent_feature # Import the aider tool
 import importlib # Für dynamische Importe, falls benötigt, aber wir mappen direkt
 
 
@@ -122,7 +123,9 @@ AVAILABLE_TOOLS_MAP = {
     "update_confluence_page": update_confluence_page,
     "delete_confluence_page": delete_confluence_page,
     # Google Search (obwohl nicht in der initialen Liste für PO, hier für Vollständigkeit, falls später hinzugefügt)
-    "perform_google_search": perform_google_search
+    "perform_google_search": perform_google_search,
+    # Aider Tool
+    "add_agent_feature": add_agent_feature
 }
 
 def load_configured_tools_for_agent(agent_name: str) -> list:
