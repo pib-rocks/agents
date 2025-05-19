@@ -353,7 +353,7 @@ __all__ = [
 def generate_jira_issues_for_requirement(
     requirement_id: str,
     project_key: str,
-    issue_type_name: str,
+    issue_type_name: str,#AI! The newly created issue should always be a story
     components: Optional[List[str]] = None,
     num_context_requirements: int = 3
 ) -> Dict:
