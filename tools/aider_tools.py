@@ -26,7 +26,7 @@ def add_agent_feature(task_description: str, files_to_edit: Optional[List[str]] 
     """
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     trigger_file_path = os.path.join(project_root, "aider-trigger.py")
-    content = f"""\"\"\"\n#AI!{task_description}\n\"\"\""""
+    content = f"""\"\"\"\n{task_description}\n\"\"\""""#AI! Add a constant string "aaa", which is defined at the top of this file, before the task_description
 
     try:
         with open(trigger_file_path, 'w') as f:
