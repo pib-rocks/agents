@@ -100,8 +100,10 @@ def set_tool_availability_for_agent(agent_name: str, tool_name: str, enable: boo
                 else:
                     return {"status": "info", "message": f"Werkzeug '{tool_name}' war nicht für Agent '{agent_name}' aktiviert oder existiert nicht."}
     except sqlite3.Error as e:
-        print(f"Datenbankfehler in set_tool_availability_for_agent für '{agent_name}', Werkzeug '{tool_name}': {e}")
-        return {"status": "error", "message": f"Datenbankfehler: {e}"}
+        error_message_detail = str(e) # Versuche, die Fehlermeldung zu bekommen
+        print(f"Datenbankfehler in set_tool_availability_for_agent für '{agent_name}', Werkzeug '{tool_name}': {error_message_detail}")
+        # Stelle sicher, dass immer ein Dictionary zurückgegeben wird
+        return {"status": "error", "message": f"Datenbankfehler: {error_message_detail}"}
     finally:
         # Die Verbindung wird vom Aufrufer geschlossen, der _get_db_connection verwendet hat.
         pass
