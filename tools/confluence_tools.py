@@ -34,7 +34,7 @@ def get_confluence_page(page_id: Optional[str] = None, space_key: Optional[str] 
     Returns:
         Dict[str, Any]: A dictionary with status, a message, and page data on success.
     """
-    confluence_url = os.getenv("CONFLUENCE_INSTANCE_URL")
+    confluence_url = os.getenv("CONFLUENCE_INSTANCE_URL")#AI! Change this to ATLASSIAN_INSTANCE_URL and do the same in jira_tools.py, too, so that all Atlassian-Backends can be accessed with the same credentials
     atlassian_email = os.getenv("ATLASSIAN_EMAIL")
     atlassian_api_key = os.getenv("ATLASSIAN_API_KEY")
 
