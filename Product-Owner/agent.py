@@ -12,6 +12,7 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from tools.google_search_tool import perform_google_search
 from tools.jira_tools import (
+    create_jira_issue,
     get_jira_issue_details,
     update_jira_issue,
     add_jira_comment,
@@ -28,6 +29,7 @@ from tools.vector_storage.requirements import ( # Import vector DB tools
     update_requirement,
     delete_requirement,
     get_all_requirements,
+    generate_jira_issues_for_requirement,
 )
 
 from tools.vector_storage.acceptance_criteria import ( # Import vector DB tools
@@ -92,6 +94,7 @@ root_agent = Agent(
     instruction=agent_instruction, # Load instruction from file
     tools=(lambda: [
         # Jira Tools
+        create_jira_issue,#AI! Move the remaining tool-descriptions from code-comments into the sql-database as it is for example already done with add_requirement.
         get_jira_issue_details,
         update_jira_issue,
         add_jira_comment,
@@ -105,6 +108,7 @@ root_agent = Agent(
         (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(update_requirement),
         (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(delete_requirement),
         (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(get_all_requirements),
+        generate_jira_issues_for_requirement,
         # Acceptance Criteria Functions (nicht Teil der Anforderungs-Tools, daher keine Änderung der Beschreibung)
         add_acceptance_criterion,
         retrieve_similar_acceptance_criteria,
