@@ -26,7 +26,7 @@ def create_confluence_page(space_key: str, title: str, body: str, parent_id: Opt
 def get_confluence_page(page_id: Optional[str] = None, space_key: Optional[str] = None, title: Optional[str] = None) -> Dict[str, Any]:
     """
     Retrieves a Confluence page by its ID, or by space key and title.
-    Requires CONFLUENCE_INSTANCE_URL, ATLASSIAN_EMAIL, ATLASSIAN_API_KEY environment variables.
+    Requires ATLASSIAN_INSTANCE_URL, ATLASSIAN_EMAIL, ATLASSIAN_API_KEY environment variables.
     Args:
         page_id (Optional[str]): The ID of the page to retrieve. (Prioritized if provided)
         space_key (Optional[str]): The key of the Confluence space (used with title if page_id is not given).
@@ -34,18 +34,18 @@ def get_confluence_page(page_id: Optional[str] = None, space_key: Optional[str] 
     Returns:
         Dict[str, Any]: A dictionary with status, a message, and page data on success.
     """
-    confluence_url = os.getenv("CONFLUENCE_INSTANCE_URL")#AI! Change this to ATLASSIAN_INSTANCE_URL and do the same in jira_tools.py, too, so that all Atlassian-Backends can be accessed with the same credentials
+    atlassian_instance_url = os.getenv("ATLASSIAN_INSTANCE_URL")
     atlassian_email = os.getenv("ATLASSIAN_EMAIL")
     atlassian_api_key = os.getenv("ATLASSIAN_API_KEY")
 
-    if not all([confluence_url, atlassian_email, atlassian_api_key]):
-        return {"status": "error", "message": "Confluence configuration (URL, Atlassian email, Atlassian API key) missing in environment variables."}
+    if not all([atlassian_instance_url, atlassian_email, atlassian_api_key]):
+        return {"status": "error", "message": "Atlassian instance configuration (URL, email, API key) missing in environment variables."}
 
     auth = (atlassian_email, atlassian_api_key)
     headers = {"Accept": "application/json"}
     params = {"expand": "body.storage,version,space"} # Expand to get body, version and space details
 
-    api_base_url = f"{confluence_url.rstrip('/')}/rest/api/content"
+    api_base_url = f"{atlassian_instance_url.rstrip('/')}/rest/api/content"
 
     if page_id:
         api_url = f"{api_base_url}/{page_id}"
@@ -80,7 +80,7 @@ def get_confluence_page(page_id: Optional[str] = None, space_key: Optional[str] 
         page_version = page_info.get("version", {}).get("number")
         page_link = page_info.get("_links", {}).get("webui", "")
         if not page_link and "base" in page_info.get("_links", {}): # Construct from base and webui if webui is relative
-            page_link = confluence_url.rstrip('/') + page_info.get("_links", {}).get("webui")
+            page_link = atlassian_instance_url.rstrip('/') + page_info.get("_links", {}).get("webui")
 
 
         return {
