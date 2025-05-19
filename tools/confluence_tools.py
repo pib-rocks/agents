@@ -36,7 +36,7 @@ def get_confluence_page(page_id: Optional[str] = None, space_key: Optional[str] 
     """
     confluence_url = os.getenv("CONFLUENCE_INSTANCE_URL")
     atlassian_email = os.getenv("ATLASSIAN_EMAIL")
-    confluence_api_key = os.getenv("CONFLUENCE_API_KEY")
+    confluence_api_key = os.getenv("CONFLUENCE_API_KEY")#AI! Rename this to ATLASSIAN_API_KEY and use the same in jira_tools.py also, so that all of the atlassian-tools can be accessed with the same credentials
 
     if not all([confluence_url, atlassian_email, confluence_api_key]):
         return {"status": "error", "message": "Confluence configuration (URL, Atlassian email, API key) missing in environment variables."}
