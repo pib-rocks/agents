@@ -1,3 +1,3 @@
 """
-#AI! /reset
+#AI! {/reset}
 """
