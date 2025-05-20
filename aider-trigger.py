@@ -1,5 +1,5 @@
 # Some initial line
 """
-#AI! {/reset}
+#AI! {/reset }
 """
 print("dummy")
