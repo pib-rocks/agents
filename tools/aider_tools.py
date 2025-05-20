@@ -1,7 +1,9 @@
 import os
 from typing import Dict, List, Optional
 
-AIDER_PREFIX = "aaa"
+AIDER_PREFIX = "#"+"AI!"
+BRACKET_OPEN="{"
+BRACKET_CLOSE="}"
 
 # Set environment variables for aider if not already set, e.g., AIDER_MODEL
 # os.environ['AIDER_MODEL'] = os.getenv('GEMINI_MODEL_NAME', 'gemini-1.5-flash') # Example
@@ -28,7 +30,7 @@ def add_agent_feature(task_description: str, files_to_edit: Optional[List[str]] 
     """
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     trigger_file_path = os.path.join(project_root, "aider-trigger.py")
-    content = f"""\"\"\"\n{AIDER_PREFIX}{task_description}\n\"\"\""""
+    content = f"""\"\"\"\n{AIDER_PREFIX}{BRACKET_OPEN}{task_description}{BRACKET_CLOSE}\n\"\"\"""" #AI! Replace the constants for BRACKET_OPEN and BRACKET_CLOSE by directly using escaped curly brackets
 
     try:
         with open(trigger_file_path, 'w') as f:
