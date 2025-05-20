@@ -30,7 +30,7 @@ def add_agent_feature(task_description: str, files_to_edit: Optional[List[str]] 
     """
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     trigger_file_path = os.path.join(project_root, "aider-trigger.py")
-    content = f"""\"\"\"\n{AIDER_PREFIX}{{{task_description}}}\n\"\"\""""
+    content = f"""\"\"\"\n{AIDER_PREFIX}{{{task_description} End of instruction.}}\n\"\"\""""
 
     try:
         with open(trigger_file_path, 'w') as f:
