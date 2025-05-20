@@ -2,3 +2,4 @@
 """
 #AI! {/reset}
 """
+print("dummy")
