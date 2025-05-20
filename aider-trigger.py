@@ -1,5 +1,3 @@
-# Some initial line
 """
-#AI! {/reset }
+#AI!{/reset End of instruction.}
 """
-print("dummy")
