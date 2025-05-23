@@ -7,22 +7,107 @@ import webbrowser
 # Dies sind Platzhalterfunktionen. In einer echten Implementierung würden hier
 # API-Aufrufe an Confluence erfolgen (z.B. mit der 'atlassian-python-api').
 
-def create_confluence_page(space_key: str, title: str, body: str, parent_id: Optional[str] = None) -> Dict[str, str]:
+def create_confluence_page(space_key: str, title: str, body: str, parent_id: Optional[str] = None) -> Dict[str, Any]:
     """
     Creates a new page in a Confluence space.
+    Requires ATLASSIAN_INSTANCE_URL, ATLASSIAN_EMAIL, ATLASSIAN_API_KEY environment variables.
     Args:
         space_key (str): The key of the Confluence space.
         title (str): The title of the new page.
-        body (str): The content of the page (Confluence storage format or wiki markup).
+        body (str): The content of the page (Confluence storage format).
         parent_id (Optional[str]): The ID of a parent page, if creating a child page.
     Returns:
-        Dict[str, str]: A dictionary with status and a message, including the new page ID on success.
+        Dict[str, Any]: A dictionary with status, a message, and page details (id, title, link) on success.
     """
-    # Hier würde die Logik zum Erstellen einer Confluence-Seite implementiert
-    print(f"Attempting to create Confluence page: Space='{space_key}', Title='{title}', ParentID='{parent_id}'")
-    # Simulierte Erfolgsmeldung mit einer fiktiven Seiten-ID
-    new_page_id = "12345" # Beispiel-ID
-    return {"status": "success", "message": f"Confluence page '{title}' created successfully in space '{space_key}' with ID '{new_page_id}'.", "page_id": new_page_id}
+    atlassian_instance_url = os.getenv("ATLASSIAN_INSTANCE_URL")
+    atlassian_email = os.getenv("ATLASSIAN_EMAIL")
+    atlassian_api_key = os.getenv("ATLASSIAN_API_KEY")
+
+    if not all([atlassian_instance_url, atlassian_email, atlassian_api_key]):
+        return {"status": "error", "message": "Atlassian instance configuration (URL, email, API key) missing in environment variables."}
+
+    if not space_key or not title or not body:
+        return {"status": "error", "message": "Space key, title, and body must be provided to create a page."}
+
+    auth = (atlassian_email, atlassian_api_key)
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+    }
+    api_url = f"{atlassian_instance_url.rstrip('/')}/wiki/rest/api/content"
+
+    payload = {
+        "type": "page",
+        "title": title,
+        "space": {"key": space_key},
+        "body": {
+            "storage": {
+                "value": body,
+                "representation": "storage"
+            }
+        }
+    }
+
+    if parent_id:
+        payload["ancestors"] = [{"id": parent_id}]
+
+    try:
+        response = requests.post(api_url, headers=headers, auth=auth, data=json.dumps(payload), timeout=30)
+        response.raise_for_status()  # Raises HTTPError for bad responses (4xx or 5xx)
+        
+        created_page_data = response.json()
+        page_id = created_page_data.get("id")
+        page_title = created_page_data.get("title")
+        page_link = created_page_data.get("_links", {}).get("webui", "")
+        if page_link and page_link.startswith('/'): # If link is relative
+             page_link = f"{atlassian_instance_url.rstrip('/')}{page_link}"
+
+
+        return {
+            "status": "success",
+            "message": f"Confluence page '{page_title}' created successfully in space '{space_key}' with ID '{page_id}'.",
+            "page_id": page_id,
+            "title": page_title,
+            "link": page_link,
+            "raw_response": created_page_data
+        }
+
+    except requests.exceptions.HTTPError as http_err:
+        error_message = f"HTTP error creating Confluence page: {http_err}"
+        response_text_for_error = ""
+        response_status_code = None
+        if http_err.response is not None:
+            response_text_for_error = http_err.response.text
+            response_status_code = http_err.response.status_code
+            try:
+                error_details = http_err.response.json()
+                # Attempt to extract a more specific error message from Confluence
+                detail_msg = error_details.get("message")
+                if not detail_msg and "data" in error_details and "errors" in error_details["data"]:
+                    # Handle cases where errors are nested, e.g., validation errors
+                    errors = error_details["data"]["errors"]
+                    if isinstance(errors, list) and len(errors) > 0:
+                        first_error = errors[0]
+                        if "message" in first_error and "key" in first_error["message"]:
+                             detail_msg = f"{first_error['message']['key']} (Args: {first_error['message'].get('args', [])})"
+                        elif isinstance(first_error.get("message"), str):
+                            detail_msg = first_error["message"]
+
+                if detail_msg:
+                    error_message += f" Details: {detail_msg}"
+            except json.JSONDecodeError:
+                 if response_text_for_error: # Add raw response if not JSON
+                    error_message += f" Raw response: {response_text_for_error[:200]}" # Truncate long responses
+
+        return {
+            "status": "error", 
+            "message": error_message, 
+            "details": str(http_err),
+            "response_status_code": response_status_code,
+            "response_text": response_text_for_error
+        }
+    except requests.exceptions.RequestException as req_err:
+        return {"status": "error", "message": f"Request error creating Confluence page: {req_err}"}
 
 def get_confluence_page(page_id: Optional[str] = None, space_key: Optional[str] = None, title: Optional[str] = None) -> Dict[str, Any]:
     """
@@ -242,14 +327,65 @@ def update_confluence_page(page_id: str, new_title: Optional[str] = None, new_bo
 def delete_confluence_page(page_id: str) -> Dict[str, str]:
     """
     Deletes a Confluence page by its ID.
+    Requires ATLASSIAN_INSTANCE_URL, ATLASSIAN_EMAIL, ATLASSIAN_API_KEY environment variables.
     Args:
         page_id (str): The ID of the page to delete.
     Returns:
         Dict[str, str]: A dictionary with status and a message.
     """
-    # Hier würde die Logik zum Löschen einer Confluence-Seite implementiert
-    print(f"Attempting to delete Confluence page ID: '{page_id}'")
-    return {"status": "success", "message": f"Confluence page ID '{page_id}' deleted successfully."}
+    atlassian_instance_url = os.getenv("ATLASSIAN_INSTANCE_URL")
+    atlassian_email = os.getenv("ATLASSIAN_EMAIL")
+    atlassian_api_key = os.getenv("ATLASSIAN_API_KEY")
+
+    if not all([atlassian_instance_url, atlassian_email, atlassian_api_key]):
+        return {"status": "error", "message": "Atlassian instance configuration (URL, email, API key) missing in environment variables."}
+
+    if not page_id:
+        return {"status": "error", "message": "Page ID must be provided for deletion."}
+
+    auth = (atlassian_email, atlassian_api_key)
+    headers = {"Accept": "application/json"}
+    api_url = f"{atlassian_instance_url.rstrip('/')}/wiki/rest/api/content/{page_id}"
+
+    try:
+        response = requests.delete(api_url, headers=headers, auth=auth, timeout=20)
+        response.raise_for_status()  # Raises HTTPError for bad responses (4xx or 5xx)
+        
+        # Confluence DELETE typically returns 204 No Content on success
+        return {"status": "success", "message": f"Confluence page ID '{page_id}' deleted successfully."}
+
+    except requests.exceptions.HTTPError as http_err:
+        error_message = f"HTTP error deleting Confluence page ID '{page_id}': {http_err}"
+        response_status_code = http_err.response.status_code if http_err.response is not None else None
+        
+        if response_status_code == 404:
+            error_message = f"Confluence page with ID '{page_id}' not found."
+        elif response_status_code == 401:
+            error_message = "Confluence authentication failed. Check credentials."
+        elif response_status_code == 403:
+            error_message = f"Permission denied to delete Confluence page ID '{page_id}'."
+        
+        response_text_for_error = ""
+        if http_err.response is not None:
+            response_text_for_error = http_err.response.text
+            try:
+                error_details = http_err.response.json()
+                if "message" in error_details:
+                    error_message += f" Details: {error_details['message']}"
+            except json.JSONDecodeError:
+                if response_text_for_error: # Add raw response if not JSON
+                    error_message += f" Raw response: {response_text_for_error[:200]}"
+
+
+        return {
+            "status": "error", 
+            "message": error_message, 
+            "details": str(http_err),
+            "response_status_code": response_status_code,
+            "response_text": response_text_for_error
+        }
+    except requests.exceptions.RequestException as req_err:
+        return {"status": "error", "message": f"Request error deleting Confluence page ID '{page_id}': {req_err}"}
 
 def get_confluence_child_pages(parent_page_id: str) -> Dict[str, Any]:
     """
