@@ -239,7 +239,7 @@ def update_confluence_page(page_id: str, new_title: Optional[str] = None, new_bo
     except requests.exceptions.RequestException as req_err:
         return {"status": "error", "message": f"Request error updating Confluence page ID '{page_id}': {req_err}"}
 
-def delete_confluence_page(page_id: str) -> Dict[str, str]:
+def delete_confluence_page(page_id: str) -> Dict[str, str]:#AI! Create the tool for this placeholder function
     """
     Deletes a Confluence page by its ID.
     Args:
