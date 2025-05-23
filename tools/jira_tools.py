@@ -11,7 +11,9 @@ import webbrowser # Import the webbrowser module
 SUBTASK_ISSUE_TYPE_ID = "10003" # Hardcoded Sub-task Issue Type ID
 CUSTOM_FIELD_CATEGORY_ID = "customfield_10035" # ID for the Category custom field
 # Renamed constant for broader applicability
-ALLOWED_COMPONENTS = ["cerebra", "pib-backend", "pib-blockly"]
+# ALLOWED_COMPONENTS = ["cerebra", "pib-backend", "pib-blockly"]
+# ALLOWED_COMPONENTS = ["SB3-Backend", "ML-Backend", "Frontend", "DevOps", "Backend"]
+ALLOWED_COMPONENTS = []
 
 # --- Sub-task Management Tools ---
 
@@ -238,7 +240,7 @@ def show_jira_issue(issue_key: str) -> dict:
         return {"status": "error", "error_message": "Issue key cannot be empty."}
 
     # Use the fixed base URL provided
-    base_url = "https://pib-rocks.atlassian.net/browse/"
+    base_url = "https://isento.atlassian.net/browse/"
     issue_url = f"{base_url}{issue_key}"
 
     try:
@@ -929,7 +931,7 @@ def get_jira_issue_details(issue_id: str) -> dict:
         elif response.status_code == 403:
             error_message = "Jira permission denied."
         elif response.status_code == 404:
-            error_message = f"Jira issue '{issue_id}' not found."
+            error_message = f"Jira issue '{issue_id}' not found (404)."
         else:
             error_message = f"HTTP error occurred: {http_err}"
         return {"status": "error", "error_message": error_message}
