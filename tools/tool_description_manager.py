@@ -276,10 +276,10 @@ def populate_initial_data():
         with conn:
             for tool_name, data in initial_descriptions.items():
                 conn.execute(
-                    f"INSERT OR IGNORE INTO {TABLE_NAME} (tool_name, description, source_module) VALUES (?, ?, ?)",
+                    f"INSERT OR REPLACE INTO {TABLE_NAME} (tool_name, description, source_module) VALUES (?, ?, ?)",
                     (tool_name, data["description"], data["source_module"])
                 )
-            print(f"{len(initial_descriptions)} initial tool descriptions inserted/ignored in '{TABLE_NAME}'.")
+            print(f"{len(initial_descriptions)} initial tool descriptions inserted/updated in '{TABLE_NAME}'.")
 
             # Populate agent tool assignments
             initial_agent_tools = _get_initial_agent_tool_assignments()
