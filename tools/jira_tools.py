@@ -523,7 +523,7 @@ def search_jira_issues_by_time(
     Time format should be 'YYYY-MM-DD' or 'YYYY-MM-DD HH:mm'.
 
     Args:
-        time_field (str): The time field to search on ('created' or 'updated').
+        time_field (str): The time field to search on ('created', 'updated', or 'resolutiondate').
         start_time (Optional[str]): The start date/time (inclusive). Format: 'YYYY-MM-DD' or 'YYYY-MM-DD HH:mm'.
         end_time (Optional[str]): The end date/time (inclusive). Format: 'YYYY-MM-DD' or 'YYYY-MM-DD HH:mm'.
         additional_jql (Optional[str]): Extra JQL clauses to combine with the time query (e.g., 'project = PIB AND status = Done').
@@ -539,8 +539,8 @@ def search_jira_issues_by_time(
     if not all([atlassian_instance_url, atlassian_email, atlassian_api_key]):
         return {"status": "error", "error_message": "Atlassian instance configuration (URL, email, API key) missing."}
 
-    if time_field not in ['created', 'updated']:
-        return {"status": "error", "error_message": "Invalid time_field. Must be 'created' or 'updated'."}
+    if time_field not in ['created', 'updated', 'resolutiondate']:
+        return {"status": "error", "error_message": "Invalid time_field. Must be 'created', 'updated', or 'resolutiondate'."}
     if not start_time and not end_time:
         return {"status": "error", "error_message": "At least start_time or end_time must be provided."}
 
@@ -570,7 +570,7 @@ def search_jira_issues_by_time(
     payload = {
         "jql": jql,
         "maxResults": max_results,
-        "fields": ["summary", "status", "created", "updated"] # Fields to retrieve
+        "fields": ["summary", "status", "created", "updated", "resolutiondate"] # Fields to retrieve
     }
 
     try:
@@ -593,7 +593,8 @@ def search_jira_issues_by_time(
             status = fields.get("status", {}).get("name", "N/A")
             created_ts = fields.get("created", "N/A")
             updated_ts = fields.get("updated", "N/A")
-            report_lines.append(f"  - Key: {key}, Status: {status}, Created: {created_ts}, Updated: {updated_ts}, Summary: {summary}")
+            resolution_ts = fields.get("resolutiondate", "N/A") # Get resolutiondate
+            report_lines.append(f"  - Key: {key}, Status: {status}, Created: {created_ts}, Updated: {updated_ts}, Resolved: {resolution_ts}, Summary: {summary}")
 
         return {"status": "success", "report": "\n".join(report_lines)}
 

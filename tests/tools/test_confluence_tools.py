@@ -15,7 +15,8 @@ from tools.confluence_tools import (
     get_confluence_page,
     update_confluence_page,
     delete_confluence_page,
-    get_confluence_child_pages
+    get_confluence_child_pages,
+    show_confluence_page
 )
 
 class TestConfluenceTools(unittest.TestCase):
@@ -565,6 +566,114 @@ class TestConfluenceTools(unittest.TestCase):
         result = get_confluence_child_pages(parent_page_id)
         self.assertEqual(result["status"], "error")
         self.assertIn(f"Request error retrieving child pages for parent ID '{parent_page_id}': Connection timed out", result["message"])
+
+    # --- Tests for show_confluence_page ---
+    @patch('webbrowser.open')
+    @patch('tools.confluence_tools.get_confluence_page')
+    def test_show_confluence_page_by_id_success(self, mock_get_page, mock_webbrowser_open):
+        page_id = "12345"
+        page_link = "https://test.atlassian.net/wiki/display/TEST/Test+Page"
+        mock_get_page.return_value = {
+            "status": "success",
+            "page_id": page_id,
+            "link": page_link,
+            "title": "Test Page",
+            "space_key": "TEST"
+        }
+        mock_webbrowser_open.return_value = True
+
+        result = show_confluence_page(page_id=page_id)
+        self.assertEqual(result["status"], "success")
+        self.assertIn(f"Attempted to open Confluence page ID '{page_id}' in browser.", result["message"])
+        self.assertIn(page_link, result["message"])
+        mock_get_page.assert_called_once_with(page_id=page_id, space_key=None, title=None)
+        mock_webbrowser_open.assert_called_once_with(page_link)
+
+    @patch('webbrowser.open')
+    @patch('tools.confluence_tools.get_confluence_page')
+    def test_show_confluence_page_by_space_title_success(self, mock_get_page, mock_webbrowser_open):
+        space_key = "MYSPACE"
+        title = "My Page Title"
+        page_link = "https://test.atlassian.net/wiki/display/MYSPACE/My+Page+Title"
+        resolved_page_id = "67890"
+        mock_get_page.return_value = {
+            "status": "success",
+            "page_id": resolved_page_id,
+            "link": page_link,
+            "title": title,
+            "space_key": space_key
+        }
+        mock_webbrowser_open.return_value = True
+
+        result = show_confluence_page(space_key=space_key, title=title)
+        self.assertEqual(result["status"], "success")
+        self.assertIn(f"Attempted to open Confluence page ID '{resolved_page_id}' in browser.", result["message"])
+        mock_get_page.assert_called_once_with(page_id=None, space_key=space_key, title=title)
+        mock_webbrowser_open.assert_called_once_with(page_link)
+
+    @patch('webbrowser.open')
+    @patch('tools.confluence_tools.get_confluence_page')
+    def test_show_confluence_page_get_page_fails(self, mock_get_page, mock_webbrowser_open):
+        page_id = "bad_id"
+        mock_get_page.return_value = {"status": "error", "message": "Page not found"}
+
+        result = show_confluence_page(page_id=page_id)
+        self.assertEqual(result["status"], "error")
+        self.assertIn(f"Could not retrieve Confluence page with ID '{page_id}'. Error: Page not found", result["message"])
+        mock_webbrowser_open.assert_not_called()
+
+    @patch('webbrowser.open')
+    @patch('tools.confluence_tools.get_confluence_page')
+    def test_show_confluence_page_no_link(self, mock_get_page, mock_webbrowser_open):
+        page_id = "no_link_id"
+        mock_get_page.return_value = {
+            "status": "success",
+            "page_id": page_id,
+            "link": None # No link provided
+        }
+        result = show_confluence_page(page_id=page_id)
+        self.assertEqual(result["status"], "error")
+        self.assertIn(f"No web link found for Confluence page ID '{page_id}'.", result["message"])
+        mock_webbrowser_open.assert_not_called()
+
+    @patch('webbrowser.open')
+    @patch('tools.confluence_tools.get_confluence_page')
+    def test_show_confluence_page_webbrowser_open_fails(self, mock_get_page, mock_webbrowser_open):
+        page_id = "webbrowser_fail_id"
+        page_link = "https://some.link"
+        mock_get_page.return_value = {"status": "success", "page_id": page_id, "link": page_link}
+        mock_webbrowser_open.return_value = False # Simulate browser open failure
+
+        result = show_confluence_page(page_id=page_id)
+        self.assertEqual(result["status"], "error")
+        self.assertIn(f"Failed to open Confluence page link in browser: {page_link}", result["message"])
+        mock_webbrowser_open.assert_called_once_with(page_link)
+
+    @patch('webbrowser.open')
+    @patch('tools.confluence_tools.get_confluence_page')
+    def test_show_confluence_page_webbrowser_open_exception(self, mock_get_page, mock_webbrowser_open):
+        page_id = "webbrowser_exception_id"
+        page_link = "https://another.link"
+        mock_get_page.return_value = {"status": "success", "page_id": page_id, "link": page_link}
+        mock_webbrowser_open.side_effect = Exception("Test browser error")
+
+        result = show_confluence_page(page_id=page_id)
+        self.assertEqual(result["status"], "error")
+        self.assertIn(f"An error occurred while trying to open Confluence page link {page_link} in browser: Test browser error", result["message"])
+
+    def test_show_confluence_page_insufficient_args(self):
+        result = show_confluence_page() # No args
+        self.assertEqual(result["status"], "error")
+        self.assertIn("Either page_id or both space_key and title must be provided", result["message"])
+
+        result_space_only = show_confluence_page(space_key="TEST")
+        self.assertEqual(result_space_only["status"], "error")
+        self.assertIn("Either page_id or both space_key and title must be provided", result_space_only["message"])
+
+        result_title_only = show_confluence_page(title="Test Title")
+        self.assertEqual(result_title_only["status"], "error")
+        self.assertIn("Either page_id or both space_key and title must be provided", result_title_only["message"])
+
 
 if __name__ == '__main__':
     unittest.main(argv=['first-arg-is-ignored'], exit=False)

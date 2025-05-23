@@ -2,6 +2,7 @@ import os
 import requests
 import json
 from typing import Dict, Optional, Any
+import webbrowser
 
 # Dies sind Platzhalterfunktionen. In einer echten Implementierung würden hier
 # API-Aufrufe an Confluence erfolgen (z.B. mit der 'atlassian-python-api').
@@ -333,9 +334,51 @@ def get_confluence_child_pages(parent_page_id: str) -> Dict[str, Any]:
     except requests.exceptions.RequestException as req_err:
         return {"status": "error", "message": f"Request error retrieving child pages for parent ID '{parent_page_id}': {req_err}"}
 
+def show_confluence_page(page_id: Optional[str] = None, space_key: Optional[str] = None, title: Optional[str] = None) -> Dict[str, str]:
+    """
+    Opens a Confluence page in the default web browser.
+    Requires either a page_id or both space_key and title.
+    Args:
+        page_id (Optional[str]): The ID of the page.
+        space_key (Optional[str]): The key of the Confluence space (used with title).
+        title (Optional[str]): The title of the page (used with space_key).
+    Returns:
+        Dict[str, str]: A dictionary with status and a message.
+    """
+    if not page_id and not (space_key and title):
+        return {"status": "error", "message": "Either page_id or both space_key and title must be provided to show the page."}
+
+    page_details = get_confluence_page(page_id=page_id, space_key=space_key, title=title)
+
+    if page_details.get("status") != "success":
+        message = page_details.get("message", "Failed to retrieve page details.")
+        if page_id:
+            return {"status": "error", "message": f"Could not retrieve Confluence page with ID '{page_id}'. Error: {message}"}
+        else:
+            return {"status": "error", "message": f"Could not retrieve Confluence page with title '{title}' in space '{space_key}'. Error: {message}"}
+
+    page_link = page_details.get("link")
+    actual_page_id = page_details.get("page_id", "N/A") # Get the actual ID if found by title/space
+
+    if not page_link:
+        if page_id:
+            return {"status": "error", "message": f"No web link found for Confluence page ID '{page_id}'."}
+        else:
+            return {"status": "error", "message": f"No web link found for Confluence page with title '{title}' in space '{space_key}' (Resolved ID: {actual_page_id})."}
+
+    try:
+        if webbrowser.open(page_link):
+            page_identifier = f"ID '{actual_page_id}'" if actual_page_id != "N/A" else f"title '{title}' in space '{space_key}'"
+            return {"status": "success", "message": f"Attempted to open Confluence page {page_identifier} in browser. Link: {page_link}"}
+        else:
+            return {"status": "error", "message": f"Failed to open Confluence page link in browser: {page_link}. webbrowser.open returned false."}
+    except Exception as e:
+        return {"status": "error", "message": f"An error occurred while trying to open Confluence page link {page_link} in browser: {e}"}
+
 __all__ = [
     "create_confluence_page",
     "get_confluence_page",
+    "show_confluence_page",
     "update_confluence_page",
     "delete_confluence_page",
     "get_confluence_child_pages"

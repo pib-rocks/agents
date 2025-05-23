@@ -219,6 +219,10 @@ def _get_initial_tool_descriptions() -> Dict[str, Dict[str, str]]:
             "description": "Retrieves a list of direct child pages (ID, title, link) for a given parent Confluence page ID. Does not retrieve children of children (grandchildren). Requires parent_page_id.",
             "source_module": "tools.confluence_tools"
         },
+        "show_confluence_page": {
+            "description": "Opens a specific Confluence page in the default web browser. Requires either the page_id, or both space_key and title to identify the page.",
+            "source_module": "tools.confluence_tools"
+        },
         # Aider Tool
         "add_agent_feature": {
             "description": "Uses the 'aider' CLI tool to interactively add or modify code in the agent system. "
@@ -255,7 +259,7 @@ def _get_initial_agent_tool_assignments() -> Dict[str, List[str]]:
             "get_tool_description", "update_tool_description_in_db", # Meta-tools aus tool_description_manager
             "list_available_tools_for_agent", "set_tool_availability_for_agent", # Meta-tools aus tool_manager
             # Confluence Tools for Product-Owner
-            "create_confluence_page", "get_confluence_page", "update_confluence_page", "delete_confluence_page", "get_confluence_child_pages",
+            "create_confluence_page", "get_confluence_page", "update_confluence_page", "delete_confluence_page", "get_confluence_child_pages", "show_confluence_page",
             "add_agent_feature" # Add the aider tool for Product-Owner
         ],
         "Developer": [
@@ -263,6 +267,8 @@ def _get_initial_agent_tool_assignments() -> Dict[str, List[str]]:
             "get_jira_comments", "show_jira_issue", "get_jira_transitions",
             "transition_jira_issue", "create_jira_subtask", "get_jira_subtasks",
             "delete_jira_issue", "perform_google_search",
+            # Confluence Tools for Developer
+            "get_confluence_page", "show_confluence_page", # Developer might want to view pages
             "add_agent_feature" # Add the new aider tool
         ]
     }
@@ -276,10 +282,10 @@ def populate_initial_data():
         with conn:
             for tool_name, data in initial_descriptions.items():
                 conn.execute(
-                    f"INSERT OR IGNORE INTO {TABLE_NAME} (tool_name, description, source_module) VALUES (?, ?, ?)",
+                    f"INSERT OR REPLACE INTO {TABLE_NAME} (tool_name, description, source_module) VALUES (?, ?, ?)",
                     (tool_name, data["description"], data["source_module"])
                 )
-            print(f"{len(initial_descriptions)} initial tool descriptions inserted/ignored in '{TABLE_NAME}'.")
+            print(f"{len(initial_descriptions)} initial tool descriptions inserted/updated in '{TABLE_NAME}'.")
 
             # Populate agent tool assignments
             initial_agent_tools = _get_initial_agent_tool_assignments()
