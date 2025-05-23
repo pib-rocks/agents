@@ -23,6 +23,12 @@ from tools.jira_tools import (
     search_jira_issues_by_time, # Added time search tool
     get_jira_subtasks,
 )
+
+from tools.confluence_tools import (
+    get_confluence_page,
+
+)
+
 from tools.vector_storage.requirements import ( # Import vector DB tools
     # Requirement Functions
     add_requirement,
@@ -106,6 +112,8 @@ root_agent = Agent(
         # Time Search Tool
         search_jira_issues_by_time,
         get_jira_subtasks,
+        # Confluence tools
+        get_confluence_page,
         # Vector DB Tools - Lade Beschreibungen dynamisch
         (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(add_requirement),
         (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(retrieve_similar_requirements),
