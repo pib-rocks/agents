@@ -14,7 +14,8 @@ from tools.confluence_tools import (
     create_confluence_page,
     get_confluence_page,
     update_confluence_page,
-    delete_confluence_page
+    delete_confluence_page,
+    get_confluence_child_pages
 )
 
 class TestConfluenceTools(unittest.TestCase):
@@ -453,6 +454,117 @@ class TestConfluenceTools(unittest.TestCase):
         result = get_confluence_page(page_id="123")
         self.assertEqual(result["status"], "error")
         self.assertIn("Error retrieving Confluence page: Connection timed out", result["message"])
+
+    # --- Tests for get_confluence_child_pages ---
+
+    @patch('requests.get')
+    @patch('os.getenv')
+    def test_get_confluence_child_pages_success(self, mock_getenv, mock_requests_get):
+        self._setup_mock_env_vars(mock_getenv)
+        parent_page_id = "parent_123"
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "results": [
+                {"id": "child_1", "title": "Child Page 1", "_links": {"webui": "/child1", "base": "https://test.atlassian.net"}},
+                {"id": "child_2", "title": "Child Page 2", "_links": {"webui": "/child2", "base": "https://test.atlassian.net"}}
+            ],
+            "size": 2
+        }
+        mock_requests_get.return_value = mock_response
+
+        result = get_confluence_child_pages(parent_page_id)
+
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(len(result["child_pages"]), 2)
+        self.assertEqual(result["child_pages"][0]["id"], "child_1")
+        self.assertEqual(result["child_pages"][0]["title"], "Child Page 1")
+        self.assertEqual(result["child_pages"][0]["link"], "https://test.atlassian.net/child1")
+        self.assertEqual(result["child_pages"][1]["id"], "child_2")
+        mock_requests_get.assert_called_once()
+        called_url = mock_requests_get.call_args[0][0]
+        self.assertTrue(called_url.endswith(f"/wiki/rest/api/content/{parent_page_id}/child/page"))
+
+    @patch('requests.get')
+    @patch('os.getenv')
+    def test_get_confluence_child_pages_success_no_children(self, mock_getenv, mock_requests_get):
+        self._setup_mock_env_vars(mock_getenv)
+        parent_page_id = "parent_456"
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"results": [], "size": 0}
+        mock_requests_get.return_value = mock_response
+
+        result = get_confluence_child_pages(parent_page_id)
+
+        self.assertEqual(result["status"], "success") # As per current implementation, success for no children
+        self.assertEqual(len(result["child_pages"]), 0)
+        self.assertIn(f"No child pages found for parent page ID '{parent_page_id}'", result["message"])
+
+    @patch('os.getenv')
+    def test_get_confluence_child_pages_missing_env_vars(self, mock_getenv):
+        mock_getenv.return_value = None # Simulate one var missing
+        result = get_confluence_child_pages("any_parent_id")
+        self.assertEqual(result["status"], "error")
+        self.assertIn("Atlassian instance configuration", result["message"])
+
+    @patch('os.getenv')
+    def test_get_confluence_child_pages_no_parent_id(self, mock_getenv):
+        self._setup_mock_env_vars(mock_getenv) # Env vars are fine
+        result_empty = get_confluence_child_pages("")
+        self.assertEqual(result_empty["status"], "error")
+        self.assertIn("Parent Page ID must be provided", result_empty["message"])
+        
+        result_none = get_confluence_child_pages(None)
+        self.assertEqual(result_none["status"], "error")
+        self.assertIn("Parent Page ID must be provided", result_none["message"])
+
+    @patch('requests.get')
+    @patch('os.getenv')
+    def test_get_confluence_child_pages_http_error_404_parent_not_found(self, mock_getenv, mock_requests_get):
+        self._setup_mock_env_vars(mock_getenv)
+        parent_page_id = "non_existent_parent"
+
+        mock_error_response = MagicMock()
+        mock_error_response.status_code = 404
+        mock_error_response.json.return_value = {"message": "Parent not found"}
+        mock_error_response.text = '{"message": "Parent not found"}'
+        mock_requests_get.side_effect = requests.exceptions.HTTPError(response=mock_error_response)
+
+        result = get_confluence_child_pages(parent_page_id)
+        self.assertEqual(result["status"], "error")
+        self.assertIn(f"Parent Confluence page with ID '{parent_page_id}' not found", result["message"])
+        self.assertEqual(result["response_status_code"], 404)
+
+    @patch('requests.get')
+    @patch('os.getenv')
+    def test_get_confluence_child_pages_http_error_401_auth_failed(self, mock_getenv, mock_requests_get):
+        self._setup_mock_env_vars(mock_getenv)
+        parent_page_id = "parent_789"
+
+        mock_error_response = MagicMock()
+        mock_error_response.status_code = 401
+        mock_error_response.json.return_value = {"message": "Authentication failed"}
+        mock_error_response.text = '{"message": "Authentication failed"}'
+        mock_requests_get.side_effect = requests.exceptions.HTTPError(response=mock_error_response)
+
+        result = get_confluence_child_pages(parent_page_id)
+        self.assertEqual(result["status"], "error")
+        self.assertIn("Confluence authentication failed", result["message"])
+        self.assertEqual(result["response_status_code"], 401)
+
+    @patch('requests.get')
+    @patch('os.getenv')
+    def test_get_confluence_child_pages_request_exception(self, mock_getenv, mock_requests_get):
+        self._setup_mock_env_vars(mock_getenv)
+        parent_page_id = "parent_000"
+        mock_requests_get.side_effect = requests.exceptions.Timeout("Connection timed out")
+
+        result = get_confluence_child_pages(parent_page_id)
+        self.assertEqual(result["status"], "error")
+        self.assertIn(f"Request error retrieving child pages for parent ID '{parent_page_id}': Connection timed out", result["message"])
 
 if __name__ == '__main__':
     unittest.main(argv=['first-arg-is-ignored'], exit=False)

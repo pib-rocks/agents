@@ -250,9 +250,93 @@ def delete_confluence_page(page_id: str) -> Dict[str, str]:
     print(f"Attempting to delete Confluence page ID: '{page_id}'")
     return {"status": "success", "message": f"Confluence page ID '{page_id}' deleted successfully."}
 
+def get_confluence_child_pages(parent_page_id: str) -> Dict[str, Any]:
+    """
+    Retrieves a list of direct child pages for a given parent Confluence page ID.
+    Requires ATLASSIAN_INSTANCE_URL, ATLASSIAN_EMAIL, ATLASSIAN_API_KEY environment variables.
+    Args:
+        parent_page_id (str): The ID of the parent page.
+    Returns:
+        Dict[str, Any]: A dictionary with status, a message, and a list of child pages on success.
+                        Each child page entry contains 'id', 'title', and 'link'.
+    """
+    atlassian_instance_url = os.getenv("ATLASSIAN_INSTANCE_URL")
+    atlassian_email = os.getenv("ATLASSIAN_EMAIL")
+    atlassian_api_key = os.getenv("ATLASSIAN_API_KEY")
+
+    if not all([atlassian_instance_url, atlassian_email, atlassian_api_key]):
+        return {"status": "error", "message": "Atlassian instance configuration (URL, email, API key) missing in environment variables."}
+
+    if not parent_page_id:
+        return {"status": "error", "message": "Parent Page ID must be provided."}
+
+    auth = (atlassian_email, atlassian_api_key)
+    headers = {"Accept": "application/json"}
+    # API endpoint for child pages (only direct children of type 'page')
+    api_url = f"{atlassian_instance_url.rstrip('/')}/wiki/rest/api/content/{parent_page_id}/child/page"
+    params = {"expand": "version"} # Expand to ensure basic fields are present, adjust if more needed
+
+    try:
+        response = requests.get(api_url, headers=headers, auth=auth, params=params, timeout=20)
+        response.raise_for_status()
+        response_data = response.json()
+
+        child_pages = []
+        if "results" in response_data:
+            for page_info in response_data["results"]:
+                child_page_link = page_info.get("_links", {}).get("webui", "")
+                if child_page_link and child_page_link.startswith('/'): # If link is relative
+                    base_url = page_info.get("_links", {}).get("base", atlassian_instance_url.rstrip('/'))
+                    child_page_link = f"{base_url.rstrip('/')}{child_page_link}"
+                
+                child_pages.append({
+                    "id": page_info.get("id"),
+                    "title": page_info.get("title"),
+                    "link": child_page_link
+                })
+        
+        if not child_pages:
+             return {
+                "status": "success", # Or "info" if preferred for no children
+                "message": f"No child pages found for parent page ID '{parent_page_id}'.",
+                "child_pages": []
+            }
+
+        return {
+            "status": "success",
+            "message": f"Successfully retrieved {len(child_pages)} child page(s) for parent ID '{parent_page_id}'.",
+            "child_pages": child_pages
+        }
+
+    except requests.exceptions.HTTPError as http_err:
+        error_message = f"HTTP error retrieving child pages for parent ID '{parent_page_id}': {http_err}"
+        response_status_code = http_err.response.status_code if http_err.response else None
+        
+        if response_status_code == 404:
+            error_message = f"Parent Confluence page with ID '{parent_page_id}' not found or has no child pages of type 'page'."
+        elif response_status_code == 401:
+            error_message = "Confluence authentication failed. Check credentials."
+        elif response_status_code == 403:
+            error_message = f"Permission denied to access child pages for parent ID '{parent_page_id}'."
+        
+        try:
+            if http_err.response:
+                error_details = http_err.response.json()
+                if "message" in error_details:
+                    error_message += f" Details: {error_details['message']}"
+        except json.JSONDecodeError:
+            if http_err.response and http_err.response.text:
+                 error_message += f" Raw response: {http_err.response.text[:200]}"
+
+
+        return {"status": "error", "message": error_message, "details": str(http_err), "response_status_code": response_status_code}
+    except requests.exceptions.RequestException as req_err:
+        return {"status": "error", "message": f"Request error retrieving child pages for parent ID '{parent_page_id}': {req_err}"}
+
 __all__ = [
     "create_confluence_page",
     "get_confluence_page",
     "update_confluence_page",
-    "delete_confluence_page"
+    "delete_confluence_page",
+    "get_confluence_child_pages"
 ]
