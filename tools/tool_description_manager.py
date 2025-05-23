@@ -215,6 +215,10 @@ def _get_initial_tool_descriptions() -> Dict[str, Dict[str, str]]:
             "description": "Deletes a Confluence page by its ID.",
             "source_module": "tools.confluence_tools"
         },
+        "get_confluence_child_pages": {
+            "description": "Retrieves a list of direct child pages (ID, title, link) for a given parent Confluence page ID. Does not retrieve children of children (grandchildren). Requires parent_page_id.",
+            "source_module": "tools.confluence_tools"
+        },
         # Aider Tool
         "add_agent_feature": {
             "description": "Uses the 'aider' CLI tool to interactively add or modify code in the agent system. "
@@ -251,7 +255,7 @@ def _get_initial_agent_tool_assignments() -> Dict[str, List[str]]:
             "get_tool_description", "update_tool_description_in_db", # Meta-tools aus tool_description_manager
             "list_available_tools_for_agent", "set_tool_availability_for_agent", # Meta-tools aus tool_manager
             # Confluence Tools for Product-Owner
-            "create_confluence_page", "get_confluence_page", "update_confluence_page", "delete_confluence_page",
+            "create_confluence_page", "get_confluence_page", "update_confluence_page", "delete_confluence_page", "get_confluence_child_pages",
             "add_agent_feature" # Add the aider tool for Product-Owner
         ],
         "Developer": [
