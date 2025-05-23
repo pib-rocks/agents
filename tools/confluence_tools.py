@@ -493,7 +493,7 @@ def show_confluence_page(page_id: Optional[str] = None, space_key: Optional[str]
         else:
             return {"status": "error", "message": f"Could not retrieve Confluence page with title '{title}' in space '{space_key}'. Error: {message}"}
 
-    page_link = page_details.get("link")
+    page_link = page_details.get("link")#AI! This is missing the domain "isento.confluence.net/wiki" as prefix, add this
     actual_page_id = page_details.get("page_id", "N/A") # Get the actual ID if found by title/space
 
     if not page_link:
