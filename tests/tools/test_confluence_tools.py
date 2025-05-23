@@ -864,6 +864,90 @@ class TestConfluenceTools(unittest.TestCase):
         self.assertEqual(result_title_only["status"], "error")
         self.assertIn("Either page_id or both space_key and title must be provided", result_title_only["message"])
 
+    @patch('webbrowser.open')
+    @patch('tools.confluence_tools.get_confluence_page')
+    @patch('os.getenv')
+    def test_show_confluence_page_relative_link_with_wiki_prefix(self, mock_getenv, mock_get_page, mock_webbrowser_open):
+        self._setup_mock_env_vars(mock_getenv) # Configure getenv for ATLASSIAN_INSTANCE_URL
+        page_id = "rel_wiki_id"
+        relative_link = "/wiki/display/TEST/RelPage"
+        # ATLASSIAN_INSTANCE_URL from _setup_mock_env_vars is "https://test.atlassian.net"
+        expected_link = "https://test.atlassian.net/wiki/display/TEST/RelPage"
+        
+        mock_get_page.return_value = {
+            "status": "success", "page_id": page_id, "link": relative_link, "title": "Test Page"
+        }
+        mock_webbrowser_open.return_value = True
+
+        result = show_confluence_page(page_id=page_id)
+        self.assertEqual(result["status"], "success")
+        mock_webbrowser_open.assert_called_once_with(expected_link)
+        self.assertIn(expected_link, result["message"])
+
+    @patch('webbrowser.open')
+    @patch('tools.confluence_tools.get_confluence_page')
+    @patch('os.getenv')
+    def test_show_confluence_page_relative_link_without_wiki_prefix(self, mock_getenv, mock_get_page, mock_webbrowser_open):
+        self._setup_mock_env_vars(mock_getenv) # Configure getenv
+        page_id = "rel_no_wiki_id"
+        relative_link = "/display/TEST/RelPage2"
+        # Expected: ATLASSIAN_INSTANCE_URL + /wiki + relative_link
+        expected_link = "https://test.atlassian.net/wiki/display/TEST/RelPage2"
+        
+        mock_get_page.return_value = {
+            "status": "success", "page_id": page_id, "link": relative_link, "title": "Test Page 2"
+        }
+        mock_webbrowser_open.return_value = True
+
+        result = show_confluence_page(page_id=page_id)
+        self.assertEqual(result["status"], "success")
+        mock_webbrowser_open.assert_called_once_with(expected_link)
+        self.assertIn(expected_link, result["message"])
+
+    @patch('webbrowser.open')
+    @patch('tools.confluence_tools.get_confluence_page')
+    @patch('os.getenv')
+    def test_show_confluence_page_relative_link_env_var_missing(self, mock_getenv, mock_get_page, mock_webbrowser_open):
+        # Simulate ATLASSIAN_INSTANCE_URL is not set when show_confluence_page calls os.getenv
+        mock_getenv.side_effect = lambda key, default=None: None if key == "ATLASSIAN_INSTANCE_URL" else {
+            "ATLASSIAN_EMAIL": "test@example.com", # Keep others for get_confluence_page if it were real
+            "ATLASSIAN_API_KEY": "test_api_key"
+        }.get(key, default)
+
+        page_id = "rel_env_missing_id"
+        relative_link = "/wiki/display/TEST/RelPage3"
+        
+        # get_confluence_page is mocked, so it will succeed and return the relative link
+        mock_get_page.return_value = {
+            "status": "success", "page_id": page_id, "link": relative_link, "title": "Test Page 3"
+        }
+        mock_webbrowser_open.return_value = True
+
+        result = show_confluence_page(page_id=page_id)
+        self.assertEqual(result["status"], "success") 
+        # Expects to open the relative link as is, because ATLASSIAN_INSTANCE_URL was missing for prefixing
+        mock_webbrowser_open.assert_called_once_with(relative_link)
+        self.assertIn(relative_link, result["message"])
+
+    @patch('webbrowser.open')
+    @patch('tools.confluence_tools.get_confluence_page')
+    @patch('os.getenv')
+    def test_show_confluence_page_absolute_link_no_change(self, mock_getenv, mock_get_page, mock_webbrowser_open):
+        self._setup_mock_env_vars(mock_getenv) # Env var is available
+        page_id = "abs_link_id"
+        absolute_link = "https://my.custom.confluence/wiki/display/ANY/AbsPage"
+        
+        mock_get_page.return_value = {
+            "status": "success", "page_id": page_id, "link": absolute_link, "title": "Absolute Page"
+        }
+        mock_webbrowser_open.return_value = True
+
+        result = show_confluence_page(page_id=page_id)
+        self.assertEqual(result["status"], "success")
+        # Absolute link should not be changed
+        mock_webbrowser_open.assert_called_once_with(absolute_link)
+        self.assertIn(absolute_link, result["message"])
+
 
 if __name__ == '__main__':
     unittest.main(argv=['first-arg-is-ignored'], exit=False)
