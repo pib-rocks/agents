@@ -21,37 +21,6 @@ from tools.confluence_tools import (
 
 class TestConfluenceTools(unittest.TestCase):
 
-    # --- Tests for placeholder functions (create, update, delete) ---
-    @patch('builtins.print') # Mock print to avoid console output during tests
-    def test_create_confluence_page(self, mock_print):
-        space_key = "TESTSPACE"
-        title = "Test Page Title"
-        body = "This is the body of the test page."
-        parent_id = "123"
-        
-        result = create_confluence_page(space_key, title, body, parent_id)
-        
-        self.assertEqual(result["status"], "success")
-        self.assertIn(title, result["message"])
-        self.assertIn(space_key, result["message"])
-        self.assertIn("page_id", result)
-        mock_print.assert_called_once_with(f"Attempting to create Confluence page: Space='{space_key}', Title='{title}', ParentID='{parent_id}'")
-
-    @patch('builtins.print')
-    def test_create_confluence_page_no_parent(self, mock_print):
-        space_key = "TESTSPACE"
-        title = "Test Page No Parent"
-        body = "Body content."
-        
-        result = create_confluence_page(space_key, title, body)
-        
-        self.assertEqual(result["status"], "success")
-        self.assertIn(title, result["message"])
-        self.assertIn("page_id", result)
-        mock_print.assert_called_once_with(f"Attempting to create Confluence page: Space='{space_key}', Title='{title}', ParentID='{None}'")
-
-    # --- Tests for update_confluence_page (implemented function) ---
-
     def _setup_mock_env_vars(self, mock_getenv):
         mock_getenv.side_effect = lambda key, default=None: {
             "ATLASSIAN_INSTANCE_URL": "https://test.atlassian.net",
@@ -59,6 +28,235 @@ class TestConfluenceTools(unittest.TestCase):
             "ATLASSIAN_API_KEY": "test_api_key"
         }.get(key, default)
 
+    # --- Tests for create_confluence_page ---
+    @patch('requests.post')
+    @patch('os.getenv')
+    def test_create_confluence_page_success_with_parent(self, mock_getenv, mock_requests_post):
+        self._setup_mock_env_vars(mock_getenv)
+        space_key = "TESTSPACE"
+        title = "My New Page"
+        body = "<p>Page content</p>"
+        parent_id = "12345"
+
+        mock_post_response = MagicMock()
+        mock_post_response.status_code = 200
+        mock_post_response.json.return_value = {
+            "id": "67890",
+            "title": title,
+            "space": {"key": space_key},
+            "_links": {"webui": "/wiki/display/TESTSPACE/My+New+Page", "base": "https://test.atlassian.net"}
+        }
+        mock_requests_post.return_value = mock_post_response
+
+        result = create_confluence_page(space_key, title, body, parent_id=parent_id)
+
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["page_id"], "67890")
+        self.assertEqual(result["title"], title)
+        self.assertEqual(result["link"], "https://test.atlassian.net/wiki/display/TESTSPACE/My+New+Page")
+        self.assertIn(f"Confluence page '{title}' created successfully in space '{space_key}' with ID '67890'.", result["message"])
+        
+        mock_requests_post.assert_called_once()
+        called_url = mock_requests_post.call_args[0][0]
+        self.assertTrue(called_url.endswith("/wiki/rest/api/content"))
+        sent_payload = json.loads(mock_requests_post.call_args[1]['data'])
+        self.assertEqual(sent_payload["title"], title)
+        self.assertEqual(sent_payload["space"]["key"], space_key)
+        self.assertEqual(sent_payload["body"]["storage"]["value"], body)
+        self.assertEqual(sent_payload["ancestors"][0]["id"], parent_id)
+
+    @patch('requests.post')
+    @patch('os.getenv')
+    def test_create_confluence_page_success_no_parent(self, mock_getenv, mock_requests_post):
+        self._setup_mock_env_vars(mock_getenv)
+        space_key = "PROJ"
+        title = "Another Page"
+        body = "<h1>Hello</h1>"
+
+        mock_post_response = MagicMock()
+        mock_post_response.status_code = 200
+        mock_post_response.json.return_value = {
+            "id": "11223",
+            "title": title,
+            "space": {"key": space_key},
+            "_links": {"webui": "/wiki/display/PROJ/Another+Page"} # Test relative link
+        }
+        mock_requests_post.return_value = mock_post_response
+
+        result = create_confluence_page(space_key, title, body)
+
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["page_id"], "11223")
+        self.assertEqual(result["link"], "https://test.atlassian.net/wiki/display/PROJ/Another+Page")
+        sent_payload = json.loads(mock_requests_post.call_args[1]['data'])
+        self.assertNotIn("ancestors", sent_payload)
+
+    @patch('os.getenv')
+    def test_create_confluence_page_env_vars_missing(self, mock_getenv):
+        mock_getenv.return_value = None # Simulate one var missing
+        result = create_confluence_page("SK", "T", "B")
+        self.assertEqual(result["status"], "error")
+        self.assertIn("Atlassian instance configuration", result["message"])
+
+    @patch('os.getenv')
+    def test_create_confluence_page_missing_args(self, mock_getenv):
+        self._setup_mock_env_vars(mock_getenv)
+        result = create_confluence_page(space_key="", title="T", body="B")
+        self.assertEqual(result["status"], "error")
+        self.assertIn("Space key, title, and body must be provided", result["message"])
+        
+        result = create_confluence_page(space_key="SK", title="", body="B")
+        self.assertEqual(result["status"], "error")
+        self.assertIn("Space key, title, and body must be provided", result["message"])
+
+        result = create_confluence_page(space_key="SK", title="T", body="")
+        self.assertEqual(result["status"], "error")
+        self.assertIn("Space key, title, and body must be provided", result["message"])
+
+    @patch('requests.post')
+    @patch('os.getenv')
+    def test_create_confluence_page_http_error_400_detailed(self, mock_getenv, mock_requests_post):
+        self._setup_mock_env_vars(mock_getenv)
+        mock_error_response = MagicMock()
+        mock_error_response.status_code = 400
+        error_json = {
+            "message": "Top level error from API.",
+            "data": {"errors": [{"message": {"key": "validation.error.key", "args": ["details"]}}]}
+        }
+        mock_error_response.json.return_value = error_json
+        mock_error_response.text = json.dumps(error_json)
+        mock_requests_post.side_effect = requests.exceptions.HTTPError(response=mock_error_response)
+
+        result = create_confluence_page("SK", "T", "B")
+        self.assertEqual(result["status"], "error")
+        self.assertIn("HTTP error creating Confluence page", result["message"])
+        self.assertIn("Details: validation.error.key (Args: ['details'])", result["message"])
+        self.assertEqual(result["response_status_code"], 400)
+
+    @patch('requests.post')
+    @patch('os.getenv')
+    def test_create_confluence_page_http_error_401(self, mock_getenv, mock_requests_post):
+        self._setup_mock_env_vars(mock_getenv)
+        mock_error_response = MagicMock()
+        mock_error_response.status_code = 401
+        mock_error_response.json.return_value = {"message": "Authentication failed by API"}
+        mock_error_response.text = '{"message": "Authentication failed by API"}'
+        mock_requests_post.side_effect = requests.exceptions.HTTPError(response=mock_error_response)
+
+        result = create_confluence_page("SK", "T", "B")
+        self.assertEqual(result["status"], "error")
+        self.assertIn("HTTP error creating Confluence page", result["message"])
+        self.assertIn("Details: Authentication failed by API", result["message"])
+        self.assertEqual(result["response_status_code"], 401)
+
+    @patch('requests.post')
+    @patch('os.getenv')
+    def test_create_confluence_page_request_exception(self, mock_getenv, mock_requests_post):
+        self._setup_mock_env_vars(mock_getenv)
+        mock_requests_post.side_effect = requests.exceptions.Timeout("Connection timed out")
+
+        result = create_confluence_page("SK", "T", "B")
+        self.assertEqual(result["status"], "error")
+        self.assertIn("Request error creating Confluence page: Connection timed out", result["message"])
+
+    # --- Tests for delete_confluence_page ---
+    @patch('requests.delete')
+    @patch('os.getenv')
+    def test_delete_confluence_page_success(self, mock_getenv, mock_requests_delete):
+        self._setup_mock_env_vars(mock_getenv)
+        page_id = "todelete_123"
+
+        mock_delete_response = MagicMock()
+        mock_delete_response.status_code = 204 # Typical for successful DELETE
+        mock_delete_response.raise_for_status = MagicMock() # Ensure it doesn't raise
+        mock_requests_delete.return_value = mock_delete_response
+        
+        result = delete_confluence_page(page_id)
+
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["message"], f"Confluence page ID '{page_id}' deleted successfully.")
+        mock_requests_delete.assert_called_once()
+        called_url = mock_requests_delete.call_args[0][0]
+        self.assertTrue(called_url.endswith(f"/wiki/rest/api/content/{page_id}"))
+
+    @patch('os.getenv')
+    def test_delete_confluence_page_env_vars_missing(self, mock_getenv):
+        mock_getenv.return_value = None
+        result = delete_confluence_page("any_id")
+        self.assertEqual(result["status"], "error")
+        self.assertIn("Atlassian instance configuration", result["message"])
+
+    @patch('os.getenv')
+    def test_delete_confluence_page_no_page_id(self, mock_getenv):
+        self._setup_mock_env_vars(mock_getenv)
+        result = delete_confluence_page("")
+        self.assertEqual(result["status"], "error")
+        self.assertIn("Page ID must be provided for deletion.", result["message"])
+
+        result_none = delete_confluence_page(None)
+        self.assertEqual(result_none["status"], "error")
+        self.assertIn("Page ID must be provided for deletion.", result_none["message"])
+        
+    @patch('requests.delete')
+    @patch('os.getenv')
+    def test_delete_confluence_page_http_error_404(self, mock_getenv, mock_requests_delete):
+        self._setup_mock_env_vars(mock_getenv)
+        page_id = "notfound_404"
+        mock_error_response = MagicMock()
+        mock_error_response.status_code = 404
+        mock_error_response.json.return_value = {"message": "API says not found"}
+        mock_error_response.text = '{"message": "API says not found"}'
+        mock_requests_delete.side_effect = requests.exceptions.HTTPError(response=mock_error_response)
+
+        result = delete_confluence_page(page_id)
+        self.assertEqual(result["status"], "error")
+        self.assertEqual(result["message"], f"Confluence page with ID '{page_id}' not found.")
+        self.assertEqual(result["response_status_code"], 404)
+
+    @patch('requests.delete')
+    @patch('os.getenv')
+    def test_delete_confluence_page_http_error_401(self, mock_getenv, mock_requests_delete):
+        self._setup_mock_env_vars(mock_getenv)
+        page_id = "authfail_401"
+        mock_error_response = MagicMock()
+        mock_error_response.status_code = 401
+        mock_error_response.json.return_value = {"message": "API says auth failed"}
+        mock_error_response.text = '{"message": "API says auth failed"}'
+        mock_requests_delete.side_effect = requests.exceptions.HTTPError(response=mock_error_response)
+
+        result = delete_confluence_page(page_id)
+        self.assertEqual(result["status"], "error")
+        self.assertEqual(result["message"], "Confluence authentication failed. Check credentials.")
+        self.assertEqual(result["response_status_code"], 401)
+
+    @patch('requests.delete')
+    @patch('os.getenv')
+    def test_delete_confluence_page_http_error_403(self, mock_getenv, mock_requests_delete):
+        self._setup_mock_env_vars(mock_getenv)
+        page_id = "forbidden_403"
+        mock_error_response = MagicMock()
+        mock_error_response.status_code = 403
+        mock_error_response.json.return_value = {"message": "API says forbidden"}
+        mock_error_response.text = '{"message": "API says forbidden"}'
+        mock_requests_delete.side_effect = requests.exceptions.HTTPError(response=mock_error_response)
+
+        result = delete_confluence_page(page_id)
+        self.assertEqual(result["status"], "error")
+        self.assertEqual(result["message"], f"Permission denied to delete Confluence page ID '{page_id}'.")
+        self.assertEqual(result["response_status_code"], 403)
+
+    @patch('requests.delete')
+    @patch('os.getenv')
+    def test_delete_confluence_page_request_exception(self, mock_getenv, mock_requests_delete):
+        self._setup_mock_env_vars(mock_getenv)
+        page_id = "timeout_err"
+        mock_requests_delete.side_effect = requests.exceptions.Timeout("Connection failed")
+
+        result = delete_confluence_page(page_id)
+        self.assertEqual(result["status"], "error")
+        self.assertIn(f"Request error deleting Confluence page ID '{page_id}': Connection failed", result["message"])
+
+    # --- Tests for update_confluence_page (implemented function) ---
     @patch('requests.put')
     @patch('tools.confluence_tools.get_confluence_page')
     @patch('os.getenv')
@@ -279,15 +477,6 @@ class TestConfluenceTools(unittest.TestCase):
         result = update_confluence_page(page_id, new_title="Trigger Timeout")
         self.assertEqual(result["status"], "error")
         self.assertIn(f"Request error updating Confluence page ID '{page_id}': Connection timed out", result["message"])
-
-    @patch('builtins.print')
-    def test_delete_confluence_page(self, mock_print):
-        page_id = "13579"
-        result = delete_confluence_page(page_id)
-        
-        self.assertEqual(result["status"], "success")
-        self.assertIn(f"Confluence page ID '{page_id}' deleted successfully.", result["message"])
-        mock_print.assert_called_once_with(f"Attempting to delete Confluence page ID: '{page_id}'")
 
     # --- Tests for get_confluence_page (implemented function) ---
 
