@@ -25,7 +25,15 @@ from tools.jira_tools import (
 )
 
 from tools.confluence_tools import (
+    # Reading:
     get_confluence_page,
+    get_confluence_child_pages,
+
+    # Writing:
+    create_confluence_page,
+    update_confluence_page,
+    delete_confluence_page,
+
 
 )
 
@@ -114,6 +122,10 @@ root_agent = Agent(
         get_jira_subtasks,
         # Confluence tools
         get_confluence_page,
+        get_confluence_child_pages,
+        create_confluence_page,
+        update_confluence_page,
+        delete_confluence_page,
         # Vector DB Tools - Lade Beschreibungen dynamisch
         (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(add_requirement),
         (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(retrieve_similar_requirements),

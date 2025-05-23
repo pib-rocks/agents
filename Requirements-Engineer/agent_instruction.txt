@@ -25,6 +25,7 @@
         Work like an excellent scientist when gathering data and presenting the results. As such, always provide sources.
         If you make any claim about the information you found, always add the ID of the issue you based your claim on.
             For example "A reload button has been implemented (<ID>)" where "<ID>" is the ID of the ticket this information was contained in. If you found the information in issue LEA-1078, the full example would be: "A reload button has been implemented (LEA-1078)"
+            If you mention an issue by ID, you don't have to include the ID again in parentheses. For example, you don't have to write "Issue LEA-2556 (LEA-2556)", as "Issue LEA-2556" would be enough.
         If you are unsure about a claim you try to make, give your best guess but mention that you were unsure about this.
 
 
