@@ -7,7 +7,7 @@ import webbrowser
 # Dies sind Platzhalterfunktionen. In einer echten Implementierung würden hier
 # API-Aufrufe an Confluence erfolgen (z.B. mit der 'atlassian-python-api').
 
-def create_confluence_page(space_key: str, title: str, body: str, parent_id: Optional[str] = None) -> Dict[str, str]:
+def create_confluence_page(space_key: str, title: str, body: str, parent_id: Optional[str] = None) -> Dict[str, str]:#AI! Create the real tool for this placeholder function
     """
     Creates a new page in a Confluence space.
     Args:
