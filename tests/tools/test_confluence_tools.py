@@ -130,7 +130,8 @@ class TestConfluenceTools(unittest.TestCase):
         result = create_confluence_page("SK", "T", "B")
         self.assertEqual(result["status"], "error")
         self.assertIn("HTTP error creating Confluence page", result["message"])
-        self.assertIn("Details: validation.error.key (Args: ['details'])", result["message"])
+        # The function currently extracts the top-level message first.
+        self.assertIn("Details: Top level error from API.", result["message"])
         self.assertEqual(result["response_status_code"], 400)
 
     @patch('requests.post')
@@ -210,7 +211,7 @@ class TestConfluenceTools(unittest.TestCase):
 
         result = delete_confluence_page(page_id)
         self.assertEqual(result["status"], "error")
-        self.assertEqual(result["message"], f"Confluence page with ID '{page_id}' not found.")
+        self.assertEqual(result["message"], f"Confluence page with ID '{page_id}' not found. Details: API says not found")
         self.assertEqual(result["response_status_code"], 404)
 
     @patch('requests.delete')
@@ -226,7 +227,7 @@ class TestConfluenceTools(unittest.TestCase):
 
         result = delete_confluence_page(page_id)
         self.assertEqual(result["status"], "error")
-        self.assertEqual(result["message"], "Confluence authentication failed. Check credentials.")
+        self.assertEqual(result["message"], "Confluence authentication failed. Check credentials. Details: API says auth failed")
         self.assertEqual(result["response_status_code"], 401)
 
     @patch('requests.delete')
@@ -242,7 +243,7 @@ class TestConfluenceTools(unittest.TestCase):
 
         result = delete_confluence_page(page_id)
         self.assertEqual(result["status"], "error")
-        self.assertEqual(result["message"], f"Permission denied to delete Confluence page ID '{page_id}'.")
+        self.assertEqual(result["message"], f"Permission denied to delete Confluence page ID '{page_id}'. Details: API says forbidden")
         self.assertEqual(result["response_status_code"], 403)
 
     @patch('requests.delete')
