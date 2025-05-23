@@ -23,6 +23,52 @@ from tools.jira_tools import (
     get_jira_subtasks,   # Add sub-task tool
     delete_jira_issue,   # Add sub-task tool
 )
+from tools.aider_tools import add_agent_feature # Import the new aider tool
+# Importiere die Funktionen zum Laden von Werkzeugbeschreibungen und Agenten-Tools
+from tools.tool_description_manager import (
+    get_tool_description,
+    # update_tool_description_in_db, # Developer agent might not need this
+    get_tools_for_agent # Neue Funktion
+)
+import importlib # Für dynamische Importe, falls benötigt, aber wir mappen direkt
+
+
+# Definiere den Agentennamen
+AGENT_NAME = "Developer"
+
+# Globale Map aller verfügbaren Werkzeugfunktionen für diesen Agenten-Typ
+AVAILABLE_TOOLS_MAP = {
+    # Jira Tools
+    "get_jira_issue_details": get_jira_issue_details,
+    "update_jira_issue": update_jira_issue,
+    "add_jira_comment": add_jira_comment,
+    "get_jira_comments": get_jira_comments,
+    "show_jira_issue": show_jira_issue,
+    "get_jira_transitions": get_jira_transitions,
+    "transition_jira_issue": transition_jira_issue,
+    "create_jira_subtask": create_jira_subtask,
+    "get_jira_subtasks": get_jira_subtasks,
+    "delete_jira_issue": delete_jira_issue,
+    # Google Search
+    "perform_google_search": perform_google_search,
+    # Aider Tool
+    "add_agent_feature": add_agent_feature,
+}
+
+def load_configured_tools_for_agent(agent_name: str) -> list:
+    """Lädt die konfigurierten Werkzeuge für den Agenten aus der Datenbank."""
+    configured_tools_data = get_tools_for_agent(agent_name)
+    agent_tools_list = []
+    for tool_info in configured_tools_data:
+        tool_name = tool_info["tool_name"]
+        tool_func = AVAILABLE_TOOLS_MAP.get(tool_name)
+        if tool_func:
+            description = get_tool_description(tool_name) or getattr(tool_func, '__doc__', 'No description available.')
+            wrapped_tool = (lambda f, d: setattr(f, '__doc__', d) or f)(tool_func, description)
+            agent_tools_list.append(wrapped_tool)
+        else:
+            print(f"Warnung: Werkzeug '{tool_name}' für Agent '{agent_name}' in DB konfiguriert, aber nicht in AVAILABLE_TOOLS_MAP gefunden.")
+    return agent_tools_list
 
 # Get model name from environment variable, with a default fallback
 # Note: This line was added in a previous step (commit abb4a04) but wasn't in the provided file content.
@@ -57,17 +103,5 @@ root_agent = Agent(
         "updating assignees, opening issues in browser, and searching the web for technical context or solutions."
     ),
     instruction=agent_instruction, # Load instruction from file
-    tools=[
-        get_jira_issue_details,
-        update_jira_issue,
-        add_jira_comment,
-        get_jira_comments,
-        show_jira_issue,
-        get_jira_transitions,
-        transition_jira_issue,
-        create_jira_subtask,
-        get_jira_subtasks,
-        delete_jira_issue,
-        perform_google_search, # Use the custom Google Search function
-    ],
+    tools=load_configured_tools_for_agent(AGENT_NAME),
 )

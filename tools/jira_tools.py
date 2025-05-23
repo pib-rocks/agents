@@ -15,6 +15,99 @@ CUSTOM_FIELD_CATEGORY_ID = "customfield_10035" # ID for the Category custom fiel
 # ALLOWED_COMPONENTS = ["SB3-Backend", "ML-Backend", "Frontend", "DevOps", "Backend"]
 ALLOWED_COMPONENTS = []
 
+# --- General Issue Creation ---
+
+def create_jira_issue(
+    project_key: str,
+    summary: str,
+    description: str,
+    issue_type_name: str,
+    components: Optional[List[str]] = None
+) -> dict:
+    """Creates a new Jira issue (e.g., Story, Task).
+
+    Requires ATLASSIAN_INSTANCE_URL, ATLASSIAN_EMAIL, ATLASSIAN_API_KEY environment variables.
+
+    Args:
+        project_key (str): The key of the project where the issue will be created (e.g., 'PROJ').
+        summary (str): The summary (title) for the new issue.
+        description (str): The description for the new issue (plain text, will be converted to ADF).
+        issue_type_name (str): The name of the issue type (e.g., 'Story', 'Task', 'Bug').
+        components (Optional[List[str]]): A list of component names to set.
+            Must be from the allowed list.
+
+    Returns:
+        dict: status and result (new issue key) or error message.
+    """
+    atlassian_instance_url = os.getenv("ATLASSIAN_INSTANCE_URL")
+    atlassian_email = os.getenv("ATLASSIAN_EMAIL")
+    atlassian_api_key = os.getenv("ATLASSIAN_API_KEY")
+
+    if not all([atlassian_instance_url, atlassian_email, atlassian_api_key]):
+        return {"status": "error", "error_message": "Atlassian instance configuration (URL, email, API key) missing."}
+    if not all([project_key, summary, description, issue_type_name]):
+        return {"status": "error", "error_message": "Project key, summary, description, and issue type name are required."}
+
+    # Validate components if provided
+    if components:
+        if not isinstance(components, list):
+            return {"status": "error", "error_message": "Components must be provided as a list of strings."}
+        invalid_components = [c for c in components if c not in ALLOWED_COMPONENTS]
+        if invalid_components:
+            return {
+                "status": "error",
+                "error_message": f"Invalid component(s): {', '.join(invalid_components)}. Allowed components are: {', '.join(ALLOWED_COMPONENTS)}."
+            }
+
+    api_url = f"{atlassian_instance_url.rstrip('/')}/rest/api/3/issue"
+    auth = (atlassian_email, atlassian_api_key)
+    headers = {"Accept": "application/json", "Content-Type": "application/json"}
+
+    payload_fields = {
+        "project": {"key": project_key},
+        "summary": summary,
+        "description": { # Basic ADF format for description
+            "type": "doc",
+            "version": 1,
+            "content": [
+                {
+                    "type": "paragraph",
+                    "content": [{"type": "text", "text": description}],
+                }
+            ],
+        },
+        "issuetype": {"name": issue_type_name},
+    }
+
+    if components:
+        payload_fields["components"] = [{"name": c} for c in components]
+
+    payload = {"fields": payload_fields}
+
+    try:
+        response = requests.post(
+            api_url, headers=headers, auth=auth, data=json.dumps(payload), timeout=20
+        )
+        response.raise_for_status()
+
+        new_issue_data = response.json()
+        new_issue_key = new_issue_data.get("key")
+        return {
+            "status": "success",
+            "report": f"Issue '{new_issue_key}' created successfully in project '{project_key}'.",
+            "issue_key": new_issue_key
+        }
+    except requests.exceptions.HTTPError as http_err:
+        error_message = f"HTTP error creating issue: {http_err}"
+        try:
+            error_details = response.json()
+            if "errorMessages" in error_details: error_message += f" Details: {'; '.join(error_details['errorMessages'])}"
+            if "errors" in error_details: error_message += f" Field Errors: {json.dumps(error_details['errors'])}"
+        except json.JSONDecodeError: pass
+        return {"status": "error", "error_message": error_message}
+    except requests.exceptions.RequestException as req_err:
+        return {"status": "error", "error_message": f"Error creating issue: {req_err}"}
+
 # --- Sub-task Management Tools ---
 
 def create_jira_subtask(
@@ -24,7 +117,7 @@ def create_jira_subtask(
 ) -> dict:
     """Creates a new sub-task for a given parent issue using the default sub-task type ID.
 
-    Requires JIRA_INSTANCE_URL, JIRA_EMAIL, JIRA_API_KEY environment variables.
+    Requires ATLASSIAN_INSTANCE_URL, ATLASSIAN_EMAIL, ATLASSIAN_API_KEY environment variables.
     Uses the hardcoded SUBTASK_ISSUE_TYPE_ID ('10003').
     Optionally sets components if provided and valid.
 
@@ -37,12 +130,12 @@ def create_jira_subtask(
     Returns:
         dict: status and result (new sub-task key) or error message.
     """
-    jira_url = os.getenv("JIRA_INSTANCE_URL")
-    jira_email = os.getenv("JIRA_EMAIL")
-    jira_api_key = os.getenv("JIRA_API_KEY")
+    atlassian_instance_url = os.getenv("ATLASSIAN_INSTANCE_URL")
+    atlassian_email = os.getenv("ATLASSIAN_EMAIL")
+    atlassian_api_key = os.getenv("ATLASSIAN_API_KEY")
 
-    if not all([jira_url, jira_email, jira_api_key]):
-        return {"status": "error", "error_message": "Jira configuration missing."}
+    if not all([atlassian_instance_url, atlassian_email, atlassian_api_key]):
+        return {"status": "error", "error_message": "Atlassian instance configuration (URL, email, API key) missing."}
     if not parent_issue_key or not summary:
         return {"status": "error", "error_message": "Parent key and summary are required."}
 
@@ -56,8 +149,8 @@ def create_jira_subtask(
             }
 
     # Need project key - fetch parent issue details to get it
-    parent_details_url = f"{jira_url.rstrip('/')}/rest/api/3/issue/{parent_issue_key}?fields=project"
-    auth = (jira_email, jira_api_key)
+    parent_details_url = f"{atlassian_instance_url.rstrip('/')}/rest/api/3/issue/{parent_issue_key}?fields=project"
+    auth = (atlassian_email, atlassian_api_key)
     headers = {"Accept": "application/json"}
     project_key = None
     try:
@@ -72,7 +165,7 @@ def create_jira_subtask(
          return {"status": "error", "error_message": str(e)}
 
 
-    api_url = f"{jira_url.rstrip('/')}/rest/api/3/issue"
+    api_url = f"{atlassian_instance_url.rstrip('/')}/rest/api/3/issue"
     headers = {"Accept": "application/json", "Content-Type": "application/json"}
 
     payload_fields = {
@@ -120,7 +213,7 @@ def create_jira_subtask(
 def get_jira_subtasks(parent_issue_key: str) -> dict:
     """Retrieves sub-tasks for a specified parent Jira issue.
 
-    Requires JIRA_INSTANCE_URL, JIRA_EMAIL, and JIRA_API_KEY environment variables.
+    Requires ATLASSIAN_INSTANCE_URL, ATLASSIAN_EMAIL, and ATLASSIAN_API_KEY environment variables.
 
     Args:
         parent_issue_key (str): The Jira issue ID or key of the parent (e.g., 'PROJ-123').
@@ -129,16 +222,16 @@ def get_jira_subtasks(parent_issue_key: str) -> dict:
         dict: status and result (report listing sub-tasks) or error message.
               Each sub-task includes its key, summary, and status.
     """
-    jira_url = os.getenv("JIRA_INSTANCE_URL")
-    jira_email = os.getenv("JIRA_EMAIL")
-    jira_api_key = os.getenv("JIRA_API_KEY")
+    atlassian_instance_url = os.getenv("ATLASSIAN_INSTANCE_URL")
+    atlassian_email = os.getenv("ATLASSIAN_EMAIL")
+    atlassian_api_key = os.getenv("ATLASSIAN_API_KEY")
 
-    if not all([jira_url, jira_email, jira_api_key]):
-        return {"status": "error", "error_message": "Jira configuration missing."}
+    if not all([atlassian_instance_url, atlassian_email, atlassian_api_key]):
+        return {"status": "error", "error_message": "Atlassian instance configuration (URL, email, API key) missing."}
 
     # Fetch parent issue details including the subtasks field
-    api_url = f"{jira_url.rstrip('/')}/rest/api/3/issue/{parent_issue_key}?fields=subtasks"
-    auth = (jira_email, jira_api_key)
+    api_url = f"{atlassian_instance_url.rstrip('/')}/rest/api/3/issue/{parent_issue_key}?fields=subtasks"
+    auth = (atlassian_email, atlassian_api_key)
     headers = {"Accept": "application/json"}
 
     try:
@@ -173,7 +266,7 @@ def get_jira_subtasks(parent_issue_key: str) -> dict:
 def delete_jira_issue(issue_key: str) -> dict:
     """Deletes a Jira issue (including sub-tasks). Use with extreme caution!
 
-    Requires JIRA_INSTANCE_URL, JIRA_EMAIL, and JIRA_API_KEY environment variables.
+    Requires ATLASSIAN_INSTANCE_URL, ATLASSIAN_EMAIL, and ATLASSIAN_API_KEY environment variables.
 
     Args:
         issue_key (str): The Jira issue ID or key to delete (e.g., 'PROJ-123', 'SUB-456').
@@ -181,20 +274,20 @@ def delete_jira_issue(issue_key: str) -> dict:
     Returns:
         dict: status and result message or error message.
     """
-    jira_url = os.getenv("JIRA_INSTANCE_URL")
-    jira_email = os.getenv("JIRA_EMAIL")
-    jira_api_key = os.getenv("JIRA_API_KEY")
+    atlassian_instance_url = os.getenv("ATLASSIAN_INSTANCE_URL")
+    atlassian_email = os.getenv("ATLASSIAN_EMAIL")
+    atlassian_api_key = os.getenv("ATLASSIAN_API_KEY")
 
-    if not all([jira_url, jira_email, jira_api_key]):
-        return {"status": "error", "error_message": "Jira configuration missing."}
+    if not all([atlassian_instance_url, atlassian_email, atlassian_api_key]):
+        return {"status": "error", "error_message": "Atlassian instance configuration (URL, email, API key) missing."}
     if not issue_key:
         return {"status": "error", "error_message": "Issue key cannot be empty."}
 
     # Add a confirmation step here? Or rely on agent confirmation?
     # For now, proceed directly based on agent call.
 
-    api_url = f"{jira_url.rstrip('/')}/rest/api/3/issue/{issue_key}"
-    auth = (jira_email, jira_api_key)
+    api_url = f"{atlassian_instance_url.rstrip('/')}/rest/api/3/issue/{issue_key}"
+    auth = (atlassian_email, atlassian_api_key)
     headers = {"Accept": "application/json"}
 
     try:
@@ -273,7 +366,7 @@ def update_jira_issue(
 ) -> dict:
     """Updates fields (summary, description, assignee, components, category) for a specified Jira issue.
 
-    Requires JIRA_INSTANCE_URL, JIRA_EMAIL, and JIRA_API_KEY environment
+    Requires ATLASSIAN_INSTANCE_URL, ATLASSIAN_EMAIL, and ATLASSIAN_API_KEY environment
     variables to be set.
 
     Args:
@@ -293,15 +386,15 @@ def update_jira_issue(
     Returns:
         dict: status and result message or error message.
     """
-    jira_url = os.getenv("JIRA_INSTANCE_URL")
-    jira_email = os.getenv("JIRA_EMAIL")
-    jira_api_key = os.getenv("JIRA_API_KEY")
+    atlassian_instance_url = os.getenv("ATLASSIAN_INSTANCE_URL")
+    atlassian_email = os.getenv("ATLASSIAN_EMAIL")
+    atlassian_api_key = os.getenv("ATLASSIAN_API_KEY")
 
-    if not all([jira_url, jira_email, jira_api_key]):
+    if not all([atlassian_instance_url, atlassian_email, atlassian_api_key]):
         return {
             "status": "error",
             "error_message": (
-                "Jira configuration (JIRA_INSTANCE_URL, JIRA_EMAIL, JIRA_API_KEY)"
+                "Atlassian instance configuration (URL, email, API key)" 
                 " missing in environment variables."
             ),
         }
@@ -313,8 +406,8 @@ def update_jira_issue(
             "error_message": "No fields provided to update (summary, description, assignee, components, or category).",
         }
 
-    api_url = f"{jira_url.rstrip('/')}/rest/api/3/issue/{issue_id}"
-    auth = (jira_email, jira_api_key)
+    api_url = f"{atlassian_instance_url.rstrip('/')}/rest/api/3/issue/{issue_id}"
+    auth = (atlassian_email, atlassian_api_key)
     headers = {"Accept": "application/json", "Content-Type": "application/json"}
 
     payload_fields = {}
@@ -426,7 +519,7 @@ def search_jira_issues_by_time(
 ) -> dict:
     """Searches for Jira issues based on time criteria (created or updated).
 
-    Requires JIRA_INSTANCE_URL, JIRA_EMAIL, and JIRA_API_KEY environment variables.
+    Requires ATLASSIAN_INSTANCE_URL, ATLASSIAN_EMAIL, and ATLASSIAN_API_KEY environment variables.
     Time format should be 'YYYY-MM-DD' or 'YYYY-MM-DD HH:mm'.
 
     Args:
@@ -439,12 +532,12 @@ def search_jira_issues_by_time(
     Returns:
         dict: status and result (report listing issues) or error message.
     """
-    jira_url = os.getenv("JIRA_INSTANCE_URL")
-    jira_email = os.getenv("JIRA_EMAIL")
-    jira_api_key = os.getenv("JIRA_API_KEY")
+    atlassian_instance_url = os.getenv("ATLASSIAN_INSTANCE_URL")
+    atlassian_email = os.getenv("ATLASSIAN_EMAIL")
+    atlassian_api_key = os.getenv("ATLASSIAN_API_KEY")
 
-    if not all([jira_url, jira_email, jira_api_key]):
-        return {"status": "error", "error_message": "Jira configuration missing."}
+    if not all([atlassian_instance_url, atlassian_email, atlassian_api_key]):
+        return {"status": "error", "error_message": "Atlassian instance configuration (URL, email, API key) missing."}
 
     if time_field not in ['created', 'updated']:
         return {"status": "error", "error_message": "Invalid time_field. Must be 'created' or 'updated'."}
@@ -471,8 +564,8 @@ def search_jira_issues_by_time(
     jql = " AND ".join(jql_parts)
     jql += " ORDER BY updated DESC" # Order by most recently updated by default
 
-    api_url = f"{jira_url.rstrip('/')}/rest/api/3/search"
-    auth = (jira_email, jira_api_key)
+    api_url = f"{atlassian_instance_url.rstrip('/')}/rest/api/3/search"
+    auth = (atlassian_email, atlassian_api_key)
     headers = {"Accept": "application/json", "Content-Type": "application/json"}
     payload = {
         "jql": jql,
@@ -518,6 +611,8 @@ def search_jira_issues_by_time(
 
 
 __all__ = [
+    # General issue creation
+    'create_jira_issue',
     # Sub-task tools
     'create_jira_subtask',
     'get_jira_subtasks',
@@ -537,7 +632,7 @@ __all__ = [
 def get_jira_transitions(issue_id: str) -> dict:
     """Retrieves available workflow transitions for a specified Jira issue.
 
-    Requires JIRA_INSTANCE_URL, JIRA_EMAIL, and JIRA_API_KEY environment variables.
+    Requires ATLASSIAN_INSTANCE_URL, ATLASSIAN_EMAIL, and ATLASSIAN_API_KEY environment variables.
 
     Args:
         issue_id (str): The Jira issue ID or key (e.g., 'PROJ-123').
@@ -546,18 +641,18 @@ def get_jira_transitions(issue_id: str) -> dict:
         dict: status and result (report listing transitions) or error message.
               Each transition includes its ID and the target status name.
     """
-    jira_url = os.getenv("JIRA_INSTANCE_URL")
-    jira_email = os.getenv("JIRA_EMAIL")
-    jira_api_key = os.getenv("JIRA_API_KEY")
+    atlassian_instance_url = os.getenv("ATLASSIAN_INSTANCE_URL")
+    atlassian_email = os.getenv("ATLASSIAN_EMAIL")
+    atlassian_api_key = os.getenv("ATLASSIAN_API_KEY")
 
-    if not all([jira_url, jira_email, jira_api_key]):
+    if not all([atlassian_instance_url, atlassian_email, atlassian_api_key]):
         return {
             "status": "error",
-            "error_message": "Jira configuration missing in environment variables.",
+            "error_message": "Atlassian instance configuration (URL, email, API key) missing in environment variables.",
         }
 
-    api_url = f"{jira_url.rstrip('/')}/rest/api/3/issue/{issue_id}/transitions"
-    auth = (jira_email, jira_api_key)
+    api_url = f"{atlassian_instance_url.rstrip('/')}/rest/api/3/issue/{issue_id}/transitions"
+    auth = (atlassian_email, atlassian_api_key)
     headers = {"Accept": "application/json"}
 
     try:
@@ -592,7 +687,7 @@ def get_jira_transitions(issue_id: str) -> dict:
 def transition_jira_issue(issue_id: str, transition_id: str) -> dict:
     """Performs a workflow transition on a specified Jira issue.
 
-    Requires JIRA_INSTANCE_URL, JIRA_EMAIL, and JIRA_API_KEY environment variables.
+    Requires ATLASSIAN_INSTANCE_URL, ATLASSIAN_EMAIL, and ATLASSIAN_API_KEY environment variables.
 
     Args:
         issue_id (str): The Jira issue ID or key (e.g., 'PROJ-123').
@@ -601,21 +696,21 @@ def transition_jira_issue(issue_id: str, transition_id: str) -> dict:
     Returns:
         dict: status and result message or error message.
     """
-    jira_url = os.getenv("JIRA_INSTANCE_URL")
-    jira_email = os.getenv("JIRA_EMAIL")
-    jira_api_key = os.getenv("JIRA_API_KEY")
+    atlassian_instance_url = os.getenv("ATLASSIAN_INSTANCE_URL")
+    atlassian_email = os.getenv("ATLASSIAN_EMAIL")
+    atlassian_api_key = os.getenv("ATLASSIAN_API_KEY")
 
-    if not all([jira_url, jira_email, jira_api_key]):
+    if not all([atlassian_instance_url, atlassian_email, atlassian_api_key]):
         return {
             "status": "error",
-            "error_message": "Jira configuration missing in environment variables.",
+            "error_message": "Atlassian instance configuration (URL, email, API key) missing in environment variables.",
         }
     if not transition_id:
         return {"status": "error", "error_message": "Transition ID cannot be empty."}
 
 
-    api_url = f"{jira_url.rstrip('/')}/rest/api/3/issue/{issue_id}/transitions"
-    auth = (jira_email, jira_api_key)
+    api_url = f"{atlassian_instance_url.rstrip('/')}/rest/api/3/issue/{issue_id}/transitions"
+    auth = (atlassian_email, atlassian_api_key)
     headers = {"Accept": "application/json", "Content-Type": "application/json"}
     payload = {"transition": {"id": transition_id}}
 
@@ -652,7 +747,7 @@ def transition_jira_issue(issue_id: str, transition_id: str) -> dict:
 def add_jira_comment(issue_id: str, comment_body: str) -> dict:
     """Adds a comment to a specified Jira issue.
 
-    Requires JIRA_INSTANCE_URL, JIRA_EMAIL, and JIRA_API_KEY environment
+    Requires ATLASSIAN_INSTANCE_URL, ATLASSIAN_EMAIL, and ATLASSIAN_API_KEY environment
     variables to be set.
 
     Args:
@@ -662,15 +757,15 @@ def add_jira_comment(issue_id: str, comment_body: str) -> dict:
     Returns:
         dict: status and result message or error message.
     """
-    jira_url = os.getenv("JIRA_INSTANCE_URL")
-    jira_email = os.getenv("JIRA_EMAIL")
-    jira_api_key = os.getenv("JIRA_API_KEY")
+    atlassian_instance_url = os.getenv("ATLASSIAN_INSTANCE_URL")
+    atlassian_email = os.getenv("ATLASSIAN_EMAIL")
+    atlassian_api_key = os.getenv("ATLASSIAN_API_KEY")
 
-    if not all([jira_url, jira_email, jira_api_key]):
+    if not all([atlassian_instance_url, atlassian_email, atlassian_api_key]):
         return {
             "status": "error",
             "error_message": (
-                "Jira configuration (JIRA_INSTANCE_URL, JIRA_EMAIL, JIRA_API_KEY)"
+                "Atlassian instance configuration (URL, email, API key)" 
                 " missing in environment variables."
             ),
         }
@@ -678,8 +773,8 @@ def add_jira_comment(issue_id: str, comment_body: str) -> dict:
     if not comment_body:
         return {"status": "error", "error_message": "Comment body cannot be empty."}
 
-    api_url = f"{jira_url.rstrip('/')}/rest/api/3/issue/{issue_id}/comment"
-    auth = (jira_email, jira_api_key)
+    api_url = f"{atlassian_instance_url.rstrip('/')}/rest/api/3/issue/{issue_id}/comment"
+    auth = (atlassian_email, atlassian_api_key)
     headers = {"Accept": "application/json", "Content-Type": "application/json"}
 
     # Construct comment body in ADF format
@@ -749,7 +844,7 @@ def add_jira_comment(issue_id: str, comment_body: str) -> dict:
 def get_jira_comments(issue_id: str) -> dict:
     """Retrieves all comments for a specified Jira issue ID from Jira Cloud.
 
-    Requires JIRA_INSTANCE_URL, JIRA_EMAIL, and JIRA_API_KEY environment
+    Requires ATLASSIAN_INSTANCE_URL, ATLASSIAN_EMAIL, and ATLASSIAN_API_KEY environment
     variables to be set.
 
     Args:
@@ -758,21 +853,21 @@ def get_jira_comments(issue_id: str) -> dict:
     Returns:
         dict: status and result (report with comments) or error message.
     """
-    jira_url = os.getenv("JIRA_INSTANCE_URL")
-    jira_email = os.getenv("JIRA_EMAIL")
-    jira_api_key = os.getenv("JIRA_API_KEY")
+    atlassian_instance_url = os.getenv("ATLASSIAN_INSTANCE_URL")
+    atlassian_email = os.getenv("ATLASSIAN_EMAIL")
+    atlassian_api_key = os.getenv("ATLASSIAN_API_KEY")
 
-    if not all([jira_url, jira_email, jira_api_key]):
+    if not all([atlassian_instance_url, atlassian_email, atlassian_api_key]):
         return {
             "status": "error",
             "error_message": (
-                "Jira configuration (JIRA_INSTANCE_URL, JIRA_EMAIL, JIRA_API_KEY)"
+                "Atlassian instance configuration (URL, email, API key)" 
                 " missing in environment variables."
             ),
         }
 
-    api_url = f"{jira_url.rstrip('/')}/rest/api/3/issue/{issue_id}/comment"
-    auth = (jira_email, jira_api_key)
+    api_url = f"{atlassian_instance_url.rstrip('/')}/rest/api/3/issue/{issue_id}/comment"
+    auth = (atlassian_email, atlassian_api_key)
     headers = {"Accept": "application/json"}
 
     try:
@@ -850,7 +945,7 @@ def get_jira_comments(issue_id: str) -> dict:
 def get_jira_issue_details(issue_id: str) -> dict:
     """Retrieves details for a specified Jira issue ID from Jira Cloud.
 
-    Requires JIRA_INSTANCE_URL, JIRA_EMAIL, and JIRA_API_KEY environment
+    Requires ATLASSIAN_INSTANCE_URL, ATLASSIAN_EMAIL, and ATLASSIAN_API_KEY environment
     variables to be set.
 
     Args:
@@ -859,23 +954,23 @@ def get_jira_issue_details(issue_id: str) -> dict:
     Returns:
         dict: status and result (report) or error message.
     """
-    jira_url = os.getenv("JIRA_INSTANCE_URL")
-    jira_email = os.getenv("JIRA_EMAIL")
-    jira_api_key = os.getenv("JIRA_API_KEY")
+    atlassian_instance_url = os.getenv("ATLASSIAN_INSTANCE_URL")
+    atlassian_email = os.getenv("ATLASSIAN_EMAIL")
+    atlassian_api_key = os.getenv("ATLASSIAN_API_KEY")
 
-    if not all([jira_url, jira_email, jira_api_key]):
+    if not all([atlassian_instance_url, atlassian_email, atlassian_api_key]):
         return {
             "status": "error",
             "error_message": (
-                "Jira configuration (JIRA_INSTANCE_URL, JIRA_EMAIL, JIRA_API_KEY)"
+                "Atlassian instance configuration (URL, email, API key)" 
                 " missing in environment variables."
             ),
         }
 
     # Request the category custom field along with standard fields
     fields_to_request = f"summary,status,assignee,description,{CUSTOM_FIELD_CATEGORY_ID}"
-    api_url = f"{jira_url.rstrip('/')}/rest/api/3/issue/{issue_id}?fields={fields_to_request}"
-    auth = (jira_email, jira_api_key)
+    api_url = f"{atlassian_instance_url.rstrip('/')}/rest/api/3/issue/{issue_id}?fields={fields_to_request}"
+    auth = (atlassian_email, atlassian_api_key)
     headers = {"Accept": "application/json"}
 
     try:

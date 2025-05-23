@@ -7,6 +7,7 @@ from typing import List, Dict, Optional
 
 # Import shared components from the package initializer
 from . import client, collection, _get_next_id
+from ..jira_tools import create_jira_issue # Import for creating Jira issues
 
 # Define allowed implementation statuses
 ALLOWED_IMPLEMENTATION_STATUSES = {"Open", "In Progress", "Done", "Deferred", "Blocked", "Unknown"}
@@ -346,4 +347,137 @@ __all__ = [
     'update_requirement',
     'delete_requirement',
     'get_all_requirements',
+    'generate_jira_issues_for_requirement',
 ]
+
+def generate_jira_issues_for_requirement(
+    requirement_id: str,
+    project_key: str,
+    components: Optional[List[str]] = None,
+    num_context_requirements: int = 3
+) -> Dict:
+    """
+    Retrieves a requirement, gets context from similar requirements,
+    splits the requirement into actionable Jira issues (always as "Story"),
+    creates them, and updates the original requirement with links to these issues.
+
+    Args:
+        requirement_id (str): The ID of the requirement to process.
+        project_key (str): The Jira project key where issues will be created.
+        components (Optional[List[str]]): Optional list of component names for the Jira issues.
+        num_context_requirements (int): Number of similar requirements to fetch for context.
+
+    Returns:
+        Dict: Status dictionary with a report, including created Jira issue keys and any errors.
+    """
+    issue_type_name = "Story" # Hardcoded as per instruction
+    if not all([requirement_id, project_key]):
+        return {"status": "error", "error_message": "Requirement ID and project key are required."}
+
+    # 1. Retrieve the requirement
+    try:
+        existing_req_data = collection.get(ids=[requirement_id], include=['documents', 'metadatas'])
+        if not existing_req_data or not existing_req_data.get('ids') or not existing_req_data.get('documents'):
+            return {"status": "error", "error_message": f"Requirement '{requirement_id}' not found or has no document."}
+        
+        original_requirement_text = existing_req_data['documents'][0]
+        original_metadata = existing_req_data['metadatas'][0] if existing_req_data.get('metadatas') else {}
+
+        if original_metadata.get('type') != 'Requirement':
+            return {"status": "error", "error_message": f"Item '{requirement_id}' is not of type 'Requirement'."}
+
+    except Exception as e:
+        return {"status": "error", "error_message": f"Error retrieving requirement '{requirement_id}': {e}"}
+
+    # 2. Retrieve similar requirements for context
+    similar_reqs_report = "No similar requirements found or an error occurred."
+    try:
+        similar_results = retrieve_similar_requirements(
+            query_text=original_requirement_text,
+            n_results=num_context_requirements
+        )
+        if similar_results.get("status") == "success" and "report" in similar_results:
+            # Extract relevant parts of the report for conciseness in Jira description
+            report_lines = similar_results["report"].splitlines()
+            if len(report_lines) > 1: # Has actual results beyond "Found X similar..."
+                 # Limit the amount of context to avoid overly long descriptions
+                similar_reqs_report = "\n".join(report_lines[:1 + num_context_requirements * 4]) # Header + N * (ID, Text, Meta, Blank)
+            else:
+                similar_reqs_report = similar_results["report"]
+
+    except Exception as e:
+        similar_reqs_report = f"Error retrieving similar requirements: {e}"
+
+    # 3. Split requirement text into actionable tasks (simple line-based split)
+    actionable_tasks_text = [line.strip() for line in original_requirement_text.splitlines() if line.strip()]
+    if not actionable_tasks_text:
+        actionable_tasks_text = [original_requirement_text] # Use full text if no lines
+
+    created_issue_keys = []
+    error_messages = []
+    report_details = []
+
+    # 4. Create Jira issues for each task
+    for i, task_text in enumerate(actionable_tasks_text):
+        summary = f"{requirement_id} - Part {i+1}: {task_text[:100]}" # Truncate summary if too long
+        description = (
+            f"This task is derived from requirement: {requirement_id}\n"
+            f"Original requirement text snippet for this task: \"{task_text}\"\n\n"
+            f"Full original requirement text:\n---\n{original_requirement_text}\n---\n\n"
+            f"Context from similar requirements:\n---\n{similar_reqs_report}\n---"
+        )
+
+        jira_result = create_jira_issue(
+            project_key=project_key,
+            summary=summary,
+            description=description,
+            issue_type_name=issue_type_name,
+            components=components
+        )
+
+        if jira_result.get("status") == "success" and jira_result.get("issue_key"):
+            issue_key = jira_result["issue_key"]
+            created_issue_keys.append(issue_key)
+            report_details.append(f"Successfully created Jira issue '{issue_key}' for task: \"{task_text[:50]}...\"")
+        else:
+            err_msg = jira_result.get("error_message", f"Unknown error creating Jira issue for task: \"{task_text[:50]}...\"")
+            error_messages.append(err_msg)
+            report_details.append(f"Failed to create Jira issue for task: \"{task_text[:50]}...\". Error: {err_msg}")
+
+    # 5. Update original requirement metadata with links to Jira issues
+    if created_issue_keys:
+        updated_metadata = original_metadata.copy()
+        if 'generated_jira_issues' not in updated_metadata:
+            updated_metadata['generated_jira_issues'] = []
+        
+        # Add only new, unique keys
+        for key in created_issue_keys:
+            if key not in updated_metadata['generated_jira_issues']:
+                 updated_metadata['generated_jira_issues'].append(key)
+        
+        updated_metadata['change_date'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+        try:
+            collection.upsert(
+                ids=[requirement_id],
+                metadatas=[updated_metadata]
+                # Note: We are only updating metadata here. Document remains the same.
+            )
+            report_details.append(f"Successfully updated requirement '{requirement_id}' with generated Jira issue keys: {created_issue_keys}")
+        except Exception as e:
+            err_msg = f"Failed to update requirement '{requirement_id}' with Jira issue links: {e}"
+            error_messages.append(err_msg)
+            report_details.append(err_msg)
+
+    final_status = "success" if created_issue_keys and not error_messages else "partial_success" if created_issue_keys else "error"
+    if not created_issue_keys and not error_messages: # No tasks to create issues for
+        final_status = "success" # Or "no_action_needed"
+        report_details.append("No actionable tasks found in the requirement to create Jira issues for.")
+
+
+    return {
+        "status": final_status,
+        "report": "\n".join(report_details),
+        "created_issue_keys": created_issue_keys,
+        "errors": error_messages
+    }

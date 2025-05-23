@@ -12,6 +12,7 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from tools.google_search_tool import perform_google_search
 from tools.jira_tools import (
+    create_jira_issue,
     get_jira_issue_details,
     update_jira_issue,
     add_jira_comment,
@@ -28,6 +29,7 @@ from tools.vector_storage.requirements import ( # Import vector DB tools
     update_requirement,
     delete_requirement,
     get_all_requirements,
+    generate_jira_issues_for_requirement,
 )
 
 from tools.vector_storage.acceptance_criteria import ( # Import vector DB tools
@@ -51,9 +53,102 @@ from tools.neo4j_requirements_tool import ( # Import Neo4j tools
     add_or_update_requirement_neo4j,
     add_relationship_neo4j
 )
-# Importiere die Funktion zum Laden von Werkzeugbeschreibungen
-from tools.tool_description_manager import (get_tool_description, update_tool_description_in_db)
+# Importiere die Funktionen zum Laden von Werkzeugbeschreibungen und Agenten-Tools
+from tools.tool_description_manager import (
+    get_tool_description,
+    update_tool_description_in_db,
+    get_tools_for_agent # Neue Funktion
+)
+from tools.tool_manager import ( # Importiere neue Werkzeugverwaltungsfunktionen
+    list_available_tools_for_agent,
+    set_tool_availability_for_agent
+)
+from tools.confluence_tools import ( # Importiere Confluence Werkzeuge
+    create_confluence_page,
+    get_confluence_page,
+    update_confluence_page,
+    delete_confluence_page
+)
+from tools.aider_tools import add_agent_feature # Import the aider tool
+import importlib # Für dynamische Importe, falls benötigt, aber wir mappen direkt
 
+
+# Definiere den Agentennamen
+AGENT_NAME = "Product-Owner"
+
+# Globale Map aller verfügbaren Werkzeugfunktionen für diesen Agenten-Typ
+# Dies hilft, von String-Namen (aus der DB) auf tatsächliche Python-Funktionen zu mappen.
+AVAILABLE_TOOLS_MAP = {
+    # Jira Tools
+    "create_jira_issue": create_jira_issue,
+    "get_jira_issue_details": get_jira_issue_details,
+    "update_jira_issue": update_jira_issue,
+    "add_jira_comment": add_jira_comment,
+    "get_jira_comments": get_jira_comments,
+    "show_jira_issue": show_jira_issue,
+    "get_jira_transitions": get_jira_transitions,
+    "transition_jira_issue": transition_jira_issue,
+    "search_jira_issues_by_time": search_jira_issues_by_time,
+    # Vector DB - Requirements
+    "add_requirement": add_requirement,
+    "retrieve_similar_requirements": retrieve_similar_requirements,
+    "update_requirement": update_requirement,
+    "delete_requirement": delete_requirement,
+    "get_all_requirements": get_all_requirements,
+    "generate_jira_issues_for_requirement": generate_jira_issues_for_requirement,
+    # Vector DB - Acceptance Criteria
+    "add_acceptance_criterion": add_acceptance_criterion,
+    "retrieve_similar_acceptance_criteria": retrieve_similar_acceptance_criteria,
+    "update_acceptance_criterion": update_acceptance_criterion,
+    "delete_acceptance_criterion": delete_acceptance_criterion,
+    "get_all_acceptance_criteria": get_all_acceptance_criteria,
+    # Vector DB - Test Cases
+    "add_test_case": add_test_case,
+    "retrieve_similar_test_cases": retrieve_similar_test_cases,
+    "update_test_case": update_test_case,
+    "delete_test_case": delete_test_case,
+    "get_all_test_cases": get_all_test_cases,
+    # Neo4j Tools
+    "add_or_update_requirement_neo4j": add_or_update_requirement_neo4j,
+    "add_relationship_neo4j": add_relationship_neo4j,
+    # Meta-Tools (Werkzeugbeschreibungen verwalten)
+    "get_tool_description": get_tool_description, # aus tool_description_manager
+    "update_tool_description_in_db": update_tool_description_in_db, # aus tool_description_manager
+    # Meta-Tools (Werkzeugverfügbarkeit verwalten)
+    "list_available_tools_for_agent": list_available_tools_for_agent, # aus tool_manager
+    "set_tool_availability_for_agent": set_tool_availability_for_agent, # aus tool_manager
+    # Confluence Tools
+    "create_confluence_page": create_confluence_page,
+    "get_confluence_page": get_confluence_page,
+    "update_confluence_page": update_confluence_page,
+    "delete_confluence_page": delete_confluence_page,
+    # Google Search (obwohl nicht in der initialen Liste für PO, hier für Vollständigkeit, falls später hinzugefügt)
+    "perform_google_search": perform_google_search,
+    # Aider Tool
+    "add_agent_feature": add_agent_feature
+}
+
+def load_configured_tools_for_agent(agent_name: str) -> list:
+    """Lädt die konfigurierten Werkzeuge für den Agenten aus der Datenbank."""
+    configured_tools_data = get_tools_for_agent(agent_name)
+    agent_tools_list = []
+    for tool_info in configured_tools_data:
+        tool_name = tool_info["tool_name"]
+        tool_func = AVAILABLE_TOOLS_MAP.get(tool_name)
+        if tool_func:
+            # Die __doc__ wird dynamisch von der ADK über die Funktion selbst gelesen.
+            # Wir stellen sicher, dass die Beschreibung in der DB aktuell ist
+            # und die ADK diese über get_tool_description (falls als Tool übergeben)
+            # oder direkt aus der Funktion (falls __doc__ modifiziert wurde) holt.
+            # Der Lambda-Ansatz stellt sicher, dass __doc__ zur Laufzeit für die ADK korrekt ist.
+            description = get_tool_description(tool_name) or getattr(tool_func, '__doc__', 'No description available.')
+            # Erzeuge eine neue Funktion (Lambda), die die __doc__ setzt und die Originalfunktion zurückgibt.
+            # Dies ist der empfohlene Weg, um die __doc__ für die ADK zur Laufzeit zu setzen, ohne die Originalfunktion global zu ändern.
+            wrapped_tool = (lambda f, d: setattr(f, '__doc__', d) or f)(tool_func, description)
+            agent_tools_list.append(wrapped_tool)
+        else:
+            print(f"Warnung: Werkzeug '{tool_name}' für Agent '{agent_name}' in DB konfiguriert, aber nicht in AVAILABLE_TOOLS_MAP gefunden.")
+    return agent_tools_list
 
 # Get model name from environment variable, with a default fallback
 # Note: This line was added in a previous step (commit abb4a04) but wasn't in the provided file content.
@@ -90,40 +185,5 @@ root_agent = Agent(
         "and manages requirements in a vector database."
     ),
     instruction=agent_instruction, # Load instruction from file
-    tools=(lambda: [
-        # Jira Tools
-        get_jira_issue_details,
-        update_jira_issue,
-        add_jira_comment,
-        get_jira_comments,
-        show_jira_issue,
-        get_jira_transitions,
-        transition_jira_issue,
-        # Vector DB Tools - Lade Beschreibungen dynamisch
-        (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(add_requirement),
-        (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(retrieve_similar_requirements),
-        (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(update_requirement),
-        (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(delete_requirement),
-        (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(get_all_requirements),
-        # Acceptance Criteria Functions (nicht Teil der Anforderungs-Tools, daher keine Änderung der Beschreibung)
-        add_acceptance_criterion,
-        retrieve_similar_acceptance_criteria,
-        delete_acceptance_criterion,
-        update_acceptance_criterion,
-        get_all_acceptance_criteria,
-        # Test Case Functions (nicht Teil der Anforderungs-Tools, daher keine Änderung der Beschreibung)
-        add_test_case,
-        retrieve_similar_test_cases,
-        update_test_case,
-        delete_test_case,
-        get_all_test_cases,
-        # Neo4j Tools - Lade Beschreibungen dynamisch
-        (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(add_or_update_requirement_neo4j),
-        (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(add_relationship_neo4j),
-        # Time Search Tool
-        search_jira_issues_by_time,
-        # Working with tools
-        get_tool_description,
-        update_tool_description_in_db,
-    ])(),
+    tools=load_configured_tools_for_agent(AGENT_NAME),
 )
