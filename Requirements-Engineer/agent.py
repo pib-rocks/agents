@@ -28,6 +28,7 @@ from tools.confluence_tools import (
     # Reading:
     get_confluence_page,
     get_confluence_child_pages,
+    show_confluence_page,
 
     # Writing:
     create_confluence_page,
@@ -123,6 +124,7 @@ root_agent = Agent(
         # Confluence tools
         get_confluence_page,
         get_confluence_child_pages,
+        show_confluence_page,
         create_confluence_page,
         update_confluence_page,
         delete_confluence_page,
