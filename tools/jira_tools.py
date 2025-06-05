@@ -1024,7 +1024,7 @@ def get_jira_issue_links(issue_id: str) -> dict:
     except requests.exceptions.RequestException as req_err:
         return {"status": "error", "error_message": f"Error fetching issue links: {req_err}"}
 
-
+# AI! add possibility to get the contents as html
 def get_jira_issue_details(issue_id: str) -> dict:
     """Retrieves details for a specified Jira issue ID from Jira Cloud.
 
