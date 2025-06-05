@@ -109,7 +109,9 @@ root_agent = Agent(
     instruction=agent_instruction, # Load instruction from file
     tools=(lambda: [
         # OS Tools
-        get_current_time,
+        get_current_time,#
+        # Google Search
+        perform_google_search,
         # Jira Tools
         get_jira_issue_details,
         # update_jira_issue,
