@@ -627,6 +627,7 @@ __all__ = [
     'get_jira_comments',
     'get_jira_issue_details',
     'search_jira_issues_by_time', # Added time search tool
+    'get_jira_issue_links',
 ]
 
 
@@ -941,6 +942,87 @@ def get_jira_comments(issue_id: str) -> dict:
 
 
 # --- End of removed Implementation Step Management Tools ---
+
+
+def get_jira_issue_links(issue_id: str) -> dict:
+    """Retrieves issue links for a specified Jira issue.
+
+    Requires ATLASSIAN_INSTANCE_URL, ATLASSIAN_EMAIL, and ATLASSIAN_API_KEY environment
+    variables to be set.
+
+    Args:
+        issue_id (str): The Jira issue ID or key (e.g., 'PROJ-123').
+
+    Returns:
+        dict: status and result (report listing issue links) or error message.
+    """
+    atlassian_instance_url = os.getenv("ATLASSIAN_INSTANCE_URL")
+    atlassian_email = os.getenv("ATLASSIAN_EMAIL")
+    atlassian_api_key = os.getenv("ATLASSIAN_API_KEY")
+
+    if not all([atlassian_instance_url, atlassian_email, atlassian_api_key]):
+        return {
+            "status": "error",
+            "error_message": (
+                "Atlassian instance configuration (URL, email, API key)"
+                " missing in environment variables."
+            ),
+        }
+
+    api_url = f"{atlassian_instance_url.rstrip('/')}/rest/api/3/issue/{issue_id}?fields=issuelinks"
+    auth = (atlassian_email, atlassian_api_key)
+    headers = {"Accept": "application/json"}
+
+    try:
+        response = requests.get(api_url, headers=headers, auth=auth, timeout=15)
+        response.raise_for_status()
+
+        issue_data = response.json()
+        issue_links = issue_data.get("fields", {}).get("issuelinks", [])
+
+        if not issue_links:
+            return {"status": "success", "report": f"No issue links found for issue '{issue_id}'."}
+
+        report_lines = [f"Issue links for {issue_id}:"]
+        for link in issue_links:
+            link_type = link.get("type", {}).get("name", "N/A")
+            direction = ""
+            linked_issue_key = "N/A"
+            linked_issue_summary = "N/A"
+            linked_issue_status = "N/A"
+
+            if "inwardIssue" in link:
+                direction = link.get("type", {}).get("inward", "points to")
+                linked_issue = link.get("inwardIssue", {})
+                linked_issue_key = linked_issue.get("key", "N/A")
+                linked_issue_summary = linked_issue.get("fields", {}).get("summary", "N/A")
+                linked_issue_status = linked_issue.get("fields", {}).get("status", {}).get("name", "N/A")
+            elif "outwardIssue" in link:
+                direction = link.get("type", {}).get("outward", "is pointed to by")
+                linked_issue = link.get("outwardIssue", {})
+                linked_issue_key = linked_issue.get("key", "N/A")
+                linked_issue_summary = linked_issue.get("fields", {}).get("summary", "N/A")
+                linked_issue_status = linked_issue.get("fields", {}).get("status", {}).get("name", "N/A")
+
+            report_lines.append(
+                f"  - Type: {link_type}, Direction: {direction} {linked_issue_key} "
+                f"(Status: {linked_issue_status}, Summary: {linked_issue_summary})"
+            )
+
+        return {"status": "success", "report": "\n".join(report_lines)}
+
+    except requests.exceptions.HTTPError as http_err:
+        if response.status_code == 401:
+            error_message = "Jira authentication failed. Check email/API key."
+        elif response.status_code == 403:
+            error_message = f"Jira permission denied for accessing issue links for '{issue_id}'."
+        elif response.status_code == 404:
+            error_message = f"Jira issue '{issue_id}' not found."
+        else:
+            error_message = f"HTTP error occurred while fetching issue links: {http_err}"
+        return {"status": "error", "error_message": error_message}
+    except requests.exceptions.RequestException as req_err:
+        return {"status": "error", "error_message": f"Error fetching issue links: {req_err}"}
 
 
 def get_jira_issue_details(issue_id: str) -> dict:
