@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import patch, MagicMock
 import os
 import json
+import requests # Import the requests library
 
 # Assuming tools.jira_tools is accessible in the PYTHONPATH
 # Adjust the import path if your project structure is different
