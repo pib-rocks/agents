@@ -1024,8 +1024,7 @@ def get_jira_issue_links(issue_id: str) -> dict:
     except requests.exceptions.RequestException as req_err:
         return {"status": "error", "error_message": f"Error fetching issue links: {req_err}"}
 
-# AI! add possibility to get the contents as html
-def get_jira_issue_details(issue_id: str) -> dict:
+def get_jira_issue_details(issue_id: str, render_html: bool = False) -> dict:
     """Retrieves details for a specified Jira issue ID from Jira Cloud.
 
     Requires ATLASSIAN_INSTANCE_URL, ATLASSIAN_EMAIL, and ATLASSIAN_API_KEY environment
@@ -1033,9 +1032,12 @@ def get_jira_issue_details(issue_id: str) -> dict:
 
     Args:
         issue_id (str): The Jira issue ID (e.g., 'PROJ-123').
+        render_html (bool, optional): If True, attempts to retrieve the description
+            field as HTML. Defaults to False, which retrieves plain text.
 
     Returns:
-        dict: status and result (report) or error message.
+        dict: status and result (report including the description as plain text or HTML)
+              or error message.
     """
     atlassian_instance_url = os.getenv("ATLASSIAN_INSTANCE_URL")
     atlassian_email = os.getenv("ATLASSIAN_EMAIL")
@@ -1052,13 +1054,18 @@ def get_jira_issue_details(issue_id: str) -> dict:
 
     # Request the category custom field along with standard fields
     fields_to_request = f"summary,status,assignee,description,{CUSTOM_FIELD_CATEGORY_ID}"
-    api_url = f"{atlassian_instance_url.rstrip('/')}/rest/api/3/issue/{issue_id}?fields={fields_to_request}"
+    api_url_base = f"{atlassian_instance_url.rstrip('/')}/rest/api/3/issue/{issue_id}"
+    
+    params = {"fields": fields_to_request}
+    if render_html:
+        params["expand"] = "renderedFields"
+
     auth = (atlassian_email, atlassian_api_key)
     headers = {"Accept": "application/json"}
 
     try:
         response = requests.get(
-            api_url, headers=headers, auth=auth, timeout=15
+            api_url_base, headers=headers, auth=auth, params=params, timeout=15
         )
         response.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
 
@@ -1071,27 +1078,46 @@ def get_jira_issue_details(issue_id: str) -> dict:
         # Extract category - it's often an object with a 'value' field for single-select lists
         category_data = fields.get(CUSTOM_FIELD_CATEGORY_ID)
         category = category_data.get("value", "N/A") if isinstance(category_data, dict) else "N/A"
-        description_data = fields.get('description')
+        
         description_text = "No description provided."
-        if description_data:
-            # Basic check for ADF format (JSON object with type 'doc')
-            if isinstance(description_data, dict) and description_data.get('type') == 'doc':
-                # Attempt to extract plain text from ADF (simplistic approach)
-                try:
-                    content_texts = []
-                    for content_block in description_data.get('content', []):
-                        if content_block.get('type') == 'paragraph':
-                            for text_node in content_block.get('content', []):
-                                if text_node.get('type') == 'text':
-                                    content_texts.append(text_node.get('text', ''))
-                    description_text = "\n".join(content_texts) if content_texts else "[Complex Description Format]"
-                except Exception:
-                    description_text = "[Error parsing description]"
-            elif isinstance(description_data, str): # Handle plain text descriptions if any
-                 description_text = description_data
-            else:
-                 description_text = "[Unknown Description Format]"
+        got_html_description = False
 
+        if render_html:
+            rendered_fields = issue_data.get("renderedFields", {})
+            html_description = rendered_fields.get("description")
+            if html_description is not None:
+                description_text = html_description
+                got_html_description = True
+        
+        if not got_html_description: # True if (render_html is False) OR (render_html is True but HTML failed)
+            description_data_adf = fields.get('description')
+            if description_data_adf:
+                if isinstance(description_data_adf, dict) and description_data_adf.get('type') == 'doc':
+                    try:
+                        content_texts = []
+                        for content_block in description_data_adf.get('content', []):
+                            if content_block.get('type') == 'paragraph':
+                                for text_node in content_block.get('content', []):
+                                    if text_node.get('type') == 'text':
+                                        content_texts.append(text_node.get('text', ''))
+                        description_text = "\n".join(content_texts) if content_texts else "[Complex Description Format]"
+                    except Exception:
+                        description_text = "[Error parsing description]"
+                elif isinstance(description_data_adf, str):
+                     description_text = description_data_adf
+                else:
+                     description_text = "[Unknown Description Format]"
+            # else: description_text remains "No description provided."
+
+            if render_html and not got_html_description: # Add fallback message only if HTML was requested but failed
+                if description_text != "No description provided." and not description_text.startswith("["):
+                     description_text += " (Fallback: plain text from ADF, HTML not available)"
+                elif description_text == "[Complex Description Format]":
+                     description_text = "[Complex Description Format - Fallback from HTML request]"
+                elif description_text == "[Error parsing description]":
+                     description_text = "[Error parsing description - Fallback from HTML request]"
+                elif description_text == "[Unknown Description Format]":
+                     description_text = "[Unknown Description Format - Fallback from HTML request]"
 
         report = (
             f"Issue {issue_id}:\n"
