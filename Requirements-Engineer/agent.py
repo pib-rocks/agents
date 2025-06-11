@@ -35,6 +35,7 @@ from tools.confluence_tools import (
     create_confluence_page,
     update_confluence_page,
     delete_confluence_page,
+    search_confluence_cql,
 
 
 )
@@ -132,6 +133,7 @@ root_agent = Agent(
         create_confluence_page,
         update_confluence_page,
         delete_confluence_page,
+        search_confluence_cql,
         # Vector DB Tools - Lade Beschreibungen dynamisch
         (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(add_requirement),
         (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(retrieve_similar_requirements),
