@@ -521,7 +521,125 @@ def show_confluence_page(page_id: Optional[str] = None, space_key: Optional[str]
         return {"status": "error", "message": f"An error occurred while trying to open Confluence page link {page_link} in browser: {e}"}
 
 # Write a function for accessing the confluence search endpoint, including the ability to perform CQL queries
-# Write a function for accessing the confluence search endpoint, including the ability to perform CQL queries AI!
+
+def search_confluence_cql(cql_query: str, limit: int = 25, start: int = 0, expand: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Searches Confluence using a CQL (Confluence Query Language) query.
+    Requires ATLASSIAN_INSTANCE_URL, ATLASSIAN_EMAIL, ATLASSIAN_API_KEY environment variables.
+
+    Args:
+        cql_query (str): The CQL query string.
+        limit (int): The maximum number of results to return. Defaults to 25.
+        start (int): The starting index of the results (for pagination). Defaults to 0.
+        expand (Optional[str]): A comma-separated list of properties to expand in the results
+                                 (e.g., "content.body.storage,content.version").
+
+    Returns:
+        Dict[str, Any]: A dictionary with status, a message, and a list of search results on success.
+                        Each result typically includes 'content' (page/blogpost details), 'title', 'excerpt', 'url'.
+    """
+    atlassian_instance_url = os.getenv("ATLASSIAN_INSTANCE_URL")
+    atlassian_email = os.getenv("ATLASSIAN_EMAIL")
+    atlassian_api_key = os.getenv("ATLASSIAN_API_KEY")
+
+    if not all([atlassian_instance_url, atlassian_email, atlassian_api_key]):
+        return {"status": "error", "message": "Atlassian instance configuration (URL, email, API key) missing in environment variables."}
+
+    if not cql_query:
+        return {"status": "error", "message": "CQL query must be provided."}
+
+    auth = (atlassian_email, atlassian_api_key)
+    headers = {"Accept": "application/json"}
+    api_url = f"{atlassian_instance_url.rstrip('/')}/wiki/rest/api/search"
+    
+    params: Dict[str, Any] = {
+        "cql": cql_query,
+        "limit": limit,
+        "start": start
+    }
+    if expand:
+        params["expand"] = expand
+
+    try:
+        response = requests.get(api_url, headers=headers, auth=auth, params=params, timeout=30)
+        response.raise_for_status()
+        search_data = response.json()
+
+        results = []
+        if "results" in search_data:
+            for item in search_data["results"]:
+                content = item.get("content", {})
+                item_id = content.get("id")
+                item_title = content.get("title")
+                item_type = content.get("type") # page, blogpost, comment, attachment
+                
+                # Construct a basic link, might need adjustment based on actual _links structure for search results
+                item_link = content.get("_links", {}).get("webui")
+                if item_link and item_link.startswith('/'):
+                    base_url = content.get("_links", {}).get("base", atlassian_instance_url.rstrip('/'))
+                    item_link = f"{base_url.rstrip('/')}{item_link}"
+                elif not item_link and item_id: # Fallback if webui is not directly in content._links
+                    item_link = f"{atlassian_instance_url.rstrip('/')}/wiki/spaces/{content.get('space',{}).get('key','~')}/pages/{item_id}"
+
+
+                results.append({
+                    "id": item_id,
+                    "title": item_title,
+                    "type": item_type,
+                    "excerpt": item.get("excerpt"),
+                    "url": item.get("url"), # This is usually the API URL of the result itself
+                    "link": item_link, # This is the web UI link
+                    "raw_result": item # Include the full item for more details if needed
+                })
+        
+        total_size = search_data.get("totalSize", len(results))
+        
+        return {
+            "status": "success",
+            "message": f"Search completed. Found {len(results)} results (total matching: {total_size}).",
+            "results": results,
+            "total_size": total_size,
+            "limit": search_data.get("limit", limit),
+            "start": search_data.get("start", start),
+            "cql_query": cql_query
+        }
+
+    except requests.exceptions.HTTPError as http_err:
+        error_message = f"HTTP error during Confluence search: {http_err}"
+        response_text_for_error = ""
+        response_status_code = None
+        if http_err.response is not None:
+            response_text_for_error = http_err.response.text
+            response_status_code = http_err.response.status_code
+            if response_status_code == 400: # Bad Request, often CQL syntax error
+                error_message = f"Bad request during Confluence search (Code 400). Check CQL syntax or parameters."
+            elif response_status_code == 401:
+                error_message = "Confluence authentication failed (Code 401). Check credentials."
+            elif response_status_code == 403:
+                error_message = "Permission denied for Confluence search (Code 403)."
+            
+            try:
+                error_details = http_err.response.json()
+                if "message" in error_details:
+                    error_message += f" Details: {error_details['message']}"
+                # Confluence search errors might be in a different structure
+                elif "errorMessages" in error_details and isinstance(error_details["errorMessages"], list):
+                    error_message += f" Details: {'; '.join(error_details['errorMessages'])}"
+
+            except json.JSONDecodeError:
+                if response_text_for_error:
+                    error_message += f" Raw response: {response_text_for_error[:200]}"
+        
+        return {
+            "status": "error", 
+            "message": error_message, 
+            "details": str(http_err),
+            "response_status_code": response_status_code,
+            "response_text": response_text_for_error
+        }
+    except requests.exceptions.RequestException as req_err:
+        return {"status": "error", "message": f"Request error during Confluence search: {req_err}"}
+
 
 __all__ = [
     "create_confluence_page",
@@ -529,5 +647,6 @@ __all__ = [
     "show_confluence_page",
     "update_confluence_page",
     "delete_confluence_page",
-    "get_confluence_child_pages"
+    "get_confluence_child_pages",
+    "search_confluence_cql"
 ]
