@@ -16,7 +16,8 @@ from tools.confluence_tools import (
     update_confluence_page,
     delete_confluence_page,
     get_confluence_child_pages,
-    show_confluence_page
+    show_confluence_page,
+    search_confluence_cql
 )
 
 class TestConfluenceTools(unittest.TestCase):
@@ -947,6 +948,188 @@ class TestConfluenceTools(unittest.TestCase):
         # Absolute link should not be changed
         mock_webbrowser_open.assert_called_once_with(absolute_link)
         self.assertIn(absolute_link, result["message"])
+
+    # --- Tests for search_confluence_cql ---
+    @patch('requests.get')
+    @patch('os.getenv')
+    def test_search_confluence_cql_success_with_results(self, mock_getenv, mock_requests_get):
+        self._setup_mock_env_vars(mock_getenv)
+        cql_query = "type = page and space = TEST"
+        limit = 10
+        start = 0
+        expand = "content.body.view"
+
+        mock_search_response = MagicMock()
+        mock_search_response.status_code = 200
+        mock_search_response.json.return_value = {
+            "results": [
+                {
+                    "content": {
+                        "id": "123", "title": "Test Page 1", "type": "page",
+                        "_links": {"webui": "/display/TEST/Test+Page+1", "base": "https://test.atlassian.net"}
+                    },
+                    "excerpt": "Excerpt for page 1",
+                    "url": "api/link/123"
+                },
+                {
+                    "content": {
+                        "id": "456", "title": "Test Blogpost 1", "type": "blogpost",
+                        "_links": {"webui": "/display/TEST/Test+Blogpost+1"} # Test relative link without base in content
+                    },
+                    "excerpt": "Excerpt for blogpost 1",
+                    "url": "api/link/456"
+                }
+            ],
+            "totalSize": 2,
+            "limit": limit,
+            "start": start
+        }
+        mock_requests_get.return_value = mock_search_response
+
+        result = search_confluence_cql(cql_query, limit=limit, start=start, expand=expand)
+
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(len(result["results"]), 2)
+        self.assertEqual(result["total_size"], 2)
+        self.assertEqual(result["results"][0]["id"], "123")
+        self.assertEqual(result["results"][0]["title"], "Test Page 1")
+        self.assertEqual(result["results"][0]["link"], "https://test.atlassian.net/display/TEST/Test+Page+1")
+        self.assertEqual(result["results"][1]["id"], "456")
+        self.assertEqual(result["results"][1]["title"], "Test Blogpost 1")
+        self.assertEqual(result["results"][1]["link"], "https://test.atlassian.net/display/TEST/Test+Blogpost+1") # Assuming base from instance URL
+        
+        mock_requests_get.assert_called_once()
+        called_url = mock_requests_get.call_args[0][0]
+        self.assertTrue(called_url.endswith("/wiki/rest/api/search"))
+        called_params = mock_requests_get.call_args[1]['params']
+        self.assertEqual(called_params["cql"], cql_query)
+        self.assertEqual(called_params["limit"], limit)
+        self.assertEqual(called_params["start"], start)
+        self.assertEqual(called_params["expand"], expand)
+
+    @patch('requests.get')
+    @patch('os.getenv')
+    def test_search_confluence_cql_success_no_results(self, mock_getenv, mock_requests_get):
+        self._setup_mock_env_vars(mock_getenv)
+        cql_query = "label = non_existent_label"
+
+        mock_search_response = MagicMock()
+        mock_search_response.status_code = 200
+        mock_search_response.json.return_value = {
+            "results": [], "totalSize": 0, "limit": 25, "start": 0
+        }
+        mock_requests_get.return_value = mock_search_response
+
+        result = search_confluence_cql(cql_query)
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(len(result["results"]), 0)
+        self.assertEqual(result["total_size"], 0)
+        self.assertIn("Found 0 results", result["message"])
+
+    @patch('os.getenv')
+    def test_search_confluence_cql_env_vars_missing(self, mock_getenv):
+        mock_getenv.return_value = None # Simulate one var missing
+        result = search_confluence_cql("any query")
+        self.assertEqual(result["status"], "error")
+        self.assertIn("Atlassian instance configuration", result["message"])
+
+    @patch('os.getenv')
+    def test_search_confluence_cql_empty_query(self, mock_getenv):
+        self._setup_mock_env_vars(mock_getenv)
+        result = search_confluence_cql("")
+        self.assertEqual(result["status"], "error")
+        self.assertIn("CQL query must be provided", result["message"])
+
+    @patch('requests.get')
+    @patch('os.getenv')
+    def test_search_confluence_cql_http_error_400_bad_cql(self, mock_getenv, mock_requests_get):
+        self._setup_mock_env_vars(mock_getenv)
+        mock_error_response = MagicMock()
+        mock_error_response.status_code = 400
+        error_json = {"errorMessages": ["Invalid CQL: some error"], "message": "Bad request from API"}
+        mock_error_response.json.return_value = error_json
+        mock_error_response.text = json.dumps(error_json)
+        mock_requests_get.side_effect = requests.exceptions.HTTPError(response=mock_error_response)
+
+        result = search_confluence_cql("invalid cql here")
+        self.assertEqual(result["status"], "error")
+        self.assertIn("Bad request during Confluence search (Code 400)", result["message"])
+        self.assertIn("Details: Invalid CQL: some error", result["message"])
+        self.assertEqual(result["response_status_code"], 400)
+
+    @patch('requests.get')
+    @patch('os.getenv')
+    def test_search_confluence_cql_http_error_401_auth(self, mock_getenv, mock_requests_get):
+        self._setup_mock_env_vars(mock_getenv)
+        mock_error_response = MagicMock()
+        mock_error_response.status_code = 401
+        mock_error_response.json.return_value = {"message": "Auth failed by API"}
+        mock_error_response.text = '{"message": "Auth failed by API"}'
+        mock_requests_get.side_effect = requests.exceptions.HTTPError(response=mock_error_response)
+
+        result = search_confluence_cql("type=page")
+        self.assertEqual(result["status"], "error")
+        self.assertIn("Confluence authentication failed (Code 401)", result["message"])
+        self.assertIn("Details: Auth failed by API", result["message"])
+        self.assertEqual(result["response_status_code"], 401)
+
+    @patch('requests.get')
+    @patch('os.getenv')
+    def test_search_confluence_cql_http_error_403_permission(self, mock_getenv, mock_requests_get):
+        self._setup_mock_env_vars(mock_getenv)
+        mock_error_response = MagicMock()
+        mock_error_response.status_code = 403
+        mock_error_response.json.return_value = {"message": "Permission denied by API"}
+        mock_error_response.text = '{"message": "Permission denied by API"}'
+        mock_requests_get.side_effect = requests.exceptions.HTTPError(response=mock_error_response)
+
+        result = search_confluence_cql("type=page")
+        self.assertEqual(result["status"], "error")
+        self.assertIn("Permission denied for Confluence search (Code 403)", result["message"])
+        self.assertIn("Details: Permission denied by API", result["message"])
+        self.assertEqual(result["response_status_code"], 403)
+
+    @patch('requests.get')
+    @patch('os.getenv')
+    def test_search_confluence_cql_request_exception(self, mock_getenv, mock_requests_get):
+        self._setup_mock_env_vars(mock_getenv)
+        mock_requests_get.side_effect = requests.exceptions.Timeout("Connection timed out for search")
+
+        result = search_confluence_cql("type=page")
+        self.assertEqual(result["status"], "error")
+        self.assertIn("Request error during Confluence search: Connection timed out for search", result["message"])
+
+    @patch('requests.get')
+    @patch('os.getenv')
+    def test_search_confluence_cql_fallback_link_construction(self, mock_getenv, mock_requests_get):
+        self._setup_mock_env_vars(mock_getenv)
+        cql_query = "type = page and id = 789"
+        
+        mock_search_response = MagicMock()
+        mock_search_response.status_code = 200
+        mock_search_response.json.return_value = {
+            "results": [
+                {
+                    "content": {
+                        "id": "789", "title": "Page With No WebUI Link", "type": "page",
+                        "space": {"key": "NOSPC"},
+                        "_links": {} # No webui or base link in content._links
+                    },
+                    "excerpt": "Excerpt for page with no webui",
+                    "url": "api/link/789"
+                }
+            ],
+            "totalSize": 1, "limit": 25, "start": 0
+        }
+        mock_requests_get.return_value = mock_search_response
+
+        result = search_confluence_cql(cql_query)
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(len(result["results"]), 1)
+        self.assertEqual(result["results"][0]["id"], "789")
+        # Expect fallback link construction
+        expected_link = "https://test.atlassian.net/wiki/spaces/NOSPC/pages/789"
+        self.assertEqual(result["results"][0]["link"], expected_link)
 
 
 if __name__ == '__main__':
