@@ -520,6 +520,9 @@ def show_confluence_page(page_id: Optional[str] = None, space_key: Optional[str]
     except Exception as e:
         return {"status": "error", "message": f"An error occurred while trying to open Confluence page link {page_link} in browser: {e}"}
 
+# Write a function for accessing the confluence search endpoint, including the ability to perform CQL queries
+# Write a function for accessing the confluence search endpoint, including the ability to perform CQL queries AI!
+
 __all__ = [
     "create_confluence_page",
     "get_confluence_page",
