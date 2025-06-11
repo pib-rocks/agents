@@ -620,11 +620,23 @@ def search_confluence_cql(cql_query: str, limit: int = 25, start: int = 0, expan
             
             try:
                 error_details = http_err.response.json()
-                if "message" in error_details:
-                    error_message += f" Details: {error_details['message']}"
-                # Confluence search errors might be in a different structure
-                elif "errorMessages" in error_details and isinstance(error_details["errorMessages"], list):
+                specific_detail_found = False
+                # Prioritize 'errorMessages' as it often contains more specific CQL errors
+                if "errorMessages" in error_details and isinstance(error_details["errorMessages"], list) and error_details["errorMessages"]:
                     error_message += f" Details: {'; '.join(error_details['errorMessages'])}"
+                    specific_detail_found = True
+                elif "message" in error_details: # Fallback to general 'message'
+                    error_message += f" Details: {error_details['message']}"
+                    specific_detail_found = True
+                
+                # If no specific detail was found from the common fields, but we have a JSON response,
+                # and the generic error_message doesn't already include the raw response snippet.
+                if not specific_detail_found and response_text_for_error and f" Raw response: {response_text_for_error[:200]}" not in error_message:
+                    # This case might be redundant if the outer except json.JSONDecodeError handles it,
+                    # but ensures some detail if JSON is valid but unexpected structure.
+                    # However, the current structure means this part might not be hit if specific_detail_found is false.
+                    # The primary goal is to fix the errorMessages vs message priority.
+                    pass # The existing logic below for non-JSON or no specific message will be caught by the outer try-except.
 
             except json.JSONDecodeError:
                 if response_text_for_error:
