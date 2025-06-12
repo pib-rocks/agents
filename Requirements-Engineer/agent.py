@@ -21,6 +21,7 @@ from tools.jira_tools import (
     get_jira_transitions,
     get_jira_issue_links,
     # transition_jira_issue,
+    search_jira_issues_jql,
     search_jira_issues_by_time, # Added time search tool
     get_jira_subtasks,
 )
@@ -122,6 +123,7 @@ root_agent = Agent(
         show_jira_issue,
         get_jira_transitions,
         get_jira_issue_links,
+        search_jira_issues_jql,
         # transition_jira_issue,
         # Time Search Tool
         search_jira_issues_by_time,

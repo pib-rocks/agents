@@ -507,7 +507,8 @@ def update_jira_issue(
             "status": "error",
             "error_message": f"An error occurred: {req_err}",
         }
-
+    
+# Write a function for accessing the jira search endpoint, including the ability to perform JQL queries
 # --- JQL Search ---
 
 def search_jira_issues_jql(
