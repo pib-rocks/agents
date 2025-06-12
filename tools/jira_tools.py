@@ -508,9 +508,117 @@ def update_jira_issue(
             "error_message": f"An error occurred: {req_err}",
         }
 
-# Write a function for accessing the jira search endpoint, including the ability to perform JQL queries
-# Write a function for accessing the jira search endpoint, including the ability to perform JQL queries AI!
+# --- JQL Search ---
 
+def search_jira_issues_jql(
+    jql_query: str,
+    fields: Optional[List[str]] = None,
+    max_results: int = 50
+) -> dict:
+    """Searches for Jira issues using a JQL query.
+
+    Requires ATLASSIAN_INSTANCE_URL, ATLASSIAN_EMAIL, and ATLASSIAN_API_KEY environment variables.
+
+    Args:
+        jql_query (str): The JQL query string.
+        fields (Optional[List[str]]): A list of fields to retrieve for each issue.
+            Defaults to ["summary", "status", "assignee", "reporter", "created", "updated"].
+        max_results (int): Maximum number of issues to return. Defaults to 50.
+
+    Returns:
+        dict: status and result (list of issues or error message).
+              Each issue in the list is a dictionary of its fields.
+    """
+    atlassian_instance_url = os.getenv("ATLASSIAN_INSTANCE_URL")
+    atlassian_email = os.getenv("ATLASSIAN_EMAIL")
+    atlassian_api_key = os.getenv("ATLASSIAN_API_KEY")
+
+    if not all([atlassian_instance_url, atlassian_email, atlassian_api_key]):
+        return {"status": "error", "error_message": "Atlassian instance configuration (URL, email, API key) missing."}
+
+    if not jql_query:
+        return {"status": "error", "error_message": "JQL query cannot be empty."}
+
+    if fields is None:
+        fields = ["summary", "status", "assignee", "reporter", "created", "updated"]
+
+    api_url = f"{atlassian_instance_url.rstrip('/')}/rest/api/3/search"
+    auth = (atlassian_email, atlassian_api_key)
+    headers = {"Accept": "application/json", "Content-Type": "application/json"}
+    payload = {
+        "jql": jql_query,
+        "maxResults": max_results,
+        "fields": fields
+    }
+
+    try:
+        response = requests.post(
+            api_url, headers=headers, auth=auth, data=json.dumps(payload), timeout=30
+        )
+        response.raise_for_status()
+
+        data = response.json()
+        issues_data = data.get("issues", [])
+
+        if not issues_data:
+            return {"status": "success", "report": f"No issues found matching the JQL query: {jql_query}", "issues": []}
+
+        # Prepare a more structured list of issues
+        issues_list = []
+        for issue_raw in issues_data:
+            issue_details = {"key": issue_raw.get("key")}
+            # Populate requested fields, handling potential missing fields gracefully
+            for field_name in fields:
+                # Jira often nests fields under a 'fields' key in the response
+                raw_field_value = issue_raw.get("fields", {}).get(field_name)
+                if raw_field_value is not None:
+                    # Handle common complex fields like status, assignee, reporter
+                    if isinstance(raw_field_value, dict):
+                        if "displayName" in raw_field_value: # e.g., assignee, reporter
+                            issue_details[field_name] = raw_field_value["displayName"]
+                        elif "name" in raw_field_value: # e.g., status, issuetype, priority
+                            issue_details[field_name] = raw_field_value["name"]
+                        elif "value" in raw_field_value: # e.g., custom fields (single select)
+                            issue_details[field_name] = raw_field_value["value"]
+                        else: # Fallback for other dict types, store as is or stringify
+                            issue_details[field_name] = str(raw_field_value)
+                    elif isinstance(raw_field_value, list): # e.g. components, labels, fixVersions
+                        # For lists, extract 'name' or 'value' if items are dicts, else store as is
+                        processed_list = []
+                        for item in raw_field_value:
+                            if isinstance(item, dict):
+                                if "name" in item: processed_list.append(item["name"])
+                                elif "value" in item: processed_list.append(item["value"])
+                                else: processed_list.append(str(item))
+                            else:
+                                processed_list.append(item)
+                        issue_details[field_name] = processed_list
+                    else: # Simple field (string, number, boolean)
+                        issue_details[field_name] = raw_field_value
+                else:
+                    issue_details[field_name] = None # Field not present or null
+            issues_list.append(issue_details)
+
+
+        report_lines = [f"Found {len(issues_list)} issue(s) matching JQL (returning up to {max_results}): {jql_query}"]
+        for issue in issues_list:
+            details_str = ", ".join([f"{k}: {v}" for k, v in issue.items() if k != 'key'])
+            report_lines.append(f"  - Key: {issue['key']}, {details_str}")
+
+
+        return {"status": "success", "report": "\n".join(report_lines), "issues": issues_list}
+
+    except requests.exceptions.HTTPError as http_err:
+        error_message = f"HTTP error searching issues with JQL: {http_err}"
+        try:
+            error_details = response.json()
+            if "errorMessages" in error_details: error_message += f" Details: {'; '.join(error_details['errorMessages'])}"
+            if "errors" in error_details: error_message += f" Field Errors: {json.dumps(error_details['errors'])}"
+        except json.JSONDecodeError: pass
+        if response.status_code == 400: error_message += f"\nCheck JQL syntax: {jql_query}"
+        return {"status": "error", "error_message": error_message, "issues": []}
+    except requests.exceptions.RequestException as req_err:
+        return {"status": "error", "error_message": f"Error searching issues with JQL: {req_err}", "issues": []}
 
 # --- Time-based Search ---
 
@@ -630,6 +738,7 @@ __all__ = [
     'add_jira_comment',
     'get_jira_comments',
     'get_jira_issue_details',
+    'search_jira_issues_jql', # Added JQL search tool
     'search_jira_issues_by_time', # Added time search tool
     'get_jira_issue_links',
 ]
