@@ -508,6 +508,10 @@ def update_jira_issue(
             "error_message": f"An error occurred: {req_err}",
         }
 
+# Write a function for accessing the jira search endpoint, including the ability to perform JQL queries
+# Write a function for accessing the jira search endpoint, including the ability to perform JQL queries AI!
+
+
 # --- Time-based Search ---
 
 def search_jira_issues_by_time(
