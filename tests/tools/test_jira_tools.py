@@ -6,7 +6,7 @@ import requests # Import the requests library
 
 # Assuming tools.jira_tools is accessible in the PYTHONPATH
 # Adjust the import path if your project structure is different
-from tools.jira_tools import get_jira_issue_links, get_jira_issue_details, CUSTOM_FIELD_CATEGORY_ID
+from tools.jira_tools import get_jira_issue_links, get_jira_issue_details, CUSTOM_FIELD_CATEGORY_ID, search_jira_issues_jql
 
 class TestGetJiraIssueLinks(unittest.TestCase):
 
@@ -673,6 +673,248 @@ class TestGetJiraIssueDetails(unittest.TestCase):
         result = get_jira_issue_details(issue_id, render_html=True)
         expected_desc_text = f"{plain_desc} (Fallback: plain text from ADF, HTML not available)"
         self.assertIn(f"Description: {expected_desc_text}", result["report"])
+
+
+class TestSearchJiraIssuesJQL(unittest.TestCase):
+
+    def _setup_mock_env_vars(self, mock_getenv):
+        mock_getenv.side_effect = lambda key, default=None: {
+            "ATLASSIAN_INSTANCE_URL": "https://test.atlassian.net",
+            "ATLASSIAN_EMAIL": "test@example.com",
+            "ATLASSIAN_API_KEY": "test_api_key"
+        }.get(key, default)
+
+    @patch('tools.jira_tools.requests.post')
+    @patch('tools.jira_tools.os.getenv')
+    def test_search_success_with_results_default_fields(self, mock_getenv, mock_requests_post):
+        self._setup_mock_env_vars(mock_getenv)
+        jql_query = "project = TEST"
+        
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "issues": [
+                {
+                    "key": "TEST-1",
+                    "fields": {
+                        "summary": "Test Issue 1",
+                        "status": {"name": "Open"},
+                        "assignee": {"displayName": "User A"},
+                        "reporter": {"displayName": "User B"},
+                        "created": "2023-01-01T10:00:00.000+0000",
+                        "updated": "2023-01-02T10:00:00.000+0000"
+                    }
+                },
+                {
+                    "key": "TEST-2",
+                    "fields": {
+                        "summary": "Test Issue 2",
+                        "status": {"name": "In Progress"},
+                        "assignee": None, # Unassigned
+                        "reporter": {"displayName": "User C"},
+                        "created": "2023-01-03T10:00:00.000+0000",
+                        "updated": "2023-01-04T10:00:00.000+0000"
+                    }
+                }
+            ],
+            "maxResults": 50,
+            "total": 2
+        }
+        mock_requests_post.return_value = mock_response
+
+        result = search_jira_issues_jql(jql_query)
+
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(len(result["issues"]), 2)
+        self.assertEqual(result["issues"][0]["key"], "TEST-1")
+        self.assertEqual(result["issues"][0]["summary"], "Test Issue 1")
+        self.assertEqual(result["issues"][0]["assignee"], "User A")
+        self.assertEqual(result["issues"][1]["key"], "TEST-2")
+        self.assertEqual(result["issues"][1]["assignee"], None)
+        self.assertIn("Found 2 issue(s) matching JQL", result["report"])
+        
+        expected_payload = {
+            "jql": jql_query,
+            "maxResults": 50,
+            "fields": ["summary", "status", "assignee", "reporter", "created", "updated"]
+        }
+        mock_requests_post.assert_called_once_with(
+            "https://test.atlassian.net/rest/api/3/search",
+            headers={"Accept": "application/json", "Content-Type": "application/json"},
+            auth=("test@example.com", "test_api_key"),
+            data=json.dumps(expected_payload),
+            timeout=30
+        )
+
+    @patch('tools.jira_tools.requests.post')
+    @patch('tools.jira_tools.os.getenv')
+    def test_search_success_with_custom_fields_and_max_results(self, mock_getenv, mock_requests_post):
+        self._setup_mock_env_vars(mock_getenv)
+        jql_query = "assignee = currentUser()"
+        custom_fields = ["summary", "customfield_10001", "labels"]
+        max_res = 10
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "issues": [
+                {
+                    "key": "TEST-3",
+                    "fields": {
+                        "summary": "Custom Field Test",
+                        "customfield_10001": {"value": "OptionA"}, # Single select custom field
+                        "labels": ["label1", "label2"] # List of strings
+                    }
+                }
+            ],
+            "maxResults": max_res,
+            "total": 1
+        }
+        mock_requests_post.return_value = mock_response
+
+        result = search_jira_issues_jql(jql_query, fields=custom_fields, max_results=max_res)
+
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(len(result["issues"]), 1)
+        self.assertEqual(result["issues"][0]["key"], "TEST-3")
+        self.assertEqual(result["issues"][0]["customfield_10001"], "OptionA")
+        self.assertEqual(result["issues"][0]["labels"], ["label1", "label2"])
+        self.assertIn(f"Found 1 issue(s) matching JQL (returning up to {max_res})", result["report"])
+
+        expected_payload = {
+            "jql": jql_query,
+            "maxResults": max_res,
+            "fields": custom_fields
+        }
+        mock_requests_post.assert_called_once_with(
+            "https://test.atlassian.net/rest/api/3/search",
+            headers={"Accept": "application/json", "Content-Type": "application/json"},
+            auth=("test@example.com", "test_api_key"),
+            data=json.dumps(expected_payload),
+            timeout=30
+        )
+
+    @patch('tools.jira_tools.requests.post')
+    @patch('tools.jira_tools.os.getenv')
+    def test_search_success_no_results(self, mock_getenv, mock_requests_post):
+        self._setup_mock_env_vars(mock_getenv)
+        jql_query = "project = XYZ AND status = Resolved"
+        
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"issues": [], "maxResults": 50, "total": 0}
+        mock_requests_post.return_value = mock_response
+
+        result = search_jira_issues_jql(jql_query)
+
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(len(result["issues"]), 0)
+        self.assertIn(f"No issues found matching the JQL query: {jql_query}", result["report"])
+
+    @patch('tools.jira_tools.os.getenv')
+    def test_search_missing_env_vars(self, mock_getenv):
+        mock_getenv.side_effect = lambda key, default=None: None # Simulate no env vars
+        result = search_jira_issues_jql("project = TEST")
+        self.assertEqual(result["status"], "error")
+        self.assertIn("Atlassian instance configuration", result["error_message"])
+
+    def test_search_empty_jql_query(self):
+        result = search_jira_issues_jql("")
+        self.assertEqual(result["status"], "error")
+        self.assertEqual(result["error_message"], "JQL query cannot be empty.")
+
+    @patch('tools.jira_tools.requests.post')
+    @patch('tools.jira_tools.os.getenv')
+    def test_search_http_error_400_bad_jql(self, mock_getenv, mock_requests_post):
+        self._setup_mock_env_vars(mock_getenv)
+        jql_query = "project = INVALID JQL"
+        
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.json.return_value = {"errorMessages": ["Invalid JQL query."]}
+        mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError("Bad Request")
+        mock_requests_post.return_value = mock_response
+
+        result = search_jira_issues_jql(jql_query)
+
+        self.assertEqual(result["status"], "error")
+        self.assertIn("HTTP error searching issues with JQL", result["error_message"])
+        self.assertIn("Invalid JQL query.", result["error_message"])
+        self.assertIn(f"Check JQL syntax: {jql_query}", result["error_message"])
+        self.assertEqual(result["issues"], [])
+
+    @patch('tools.jira_tools.requests.post')
+    @patch('tools.jira_tools.os.getenv')
+    def test_search_http_error_401_unauthorized(self, mock_getenv, mock_requests_post):
+        self._setup_mock_env_vars(mock_getenv)
+        
+        mock_response = MagicMock()
+        mock_response.status_code = 401
+        mock_response.json.return_value = {"errorMessages": ["Authentication failed."]}
+        mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError("Unauthorized")
+        mock_requests_post.return_value = mock_response
+
+        result = search_jira_issues_jql("project = TEST")
+
+        self.assertEqual(result["status"], "error")
+        self.assertIn("HTTP error searching issues with JQL", result["error_message"])
+        self.assertIn("Authentication failed.", result["error_message"])
+
+    @patch('tools.jira_tools.requests.post')
+    @patch('tools.jira_tools.os.getenv')
+    def test_search_request_exception(self, mock_getenv, mock_requests_post):
+        self._setup_mock_env_vars(mock_getenv)
+        req_exception_message = "Connection timed out"
+        mock_requests_post.side_effect = requests.exceptions.RequestException(req_exception_message)
+
+        result = search_jira_issues_jql("project = TEST")
+
+        self.assertEqual(result["status"], "error")
+        self.assertEqual(result["error_message"], f"Error searching issues with JQL: {req_exception_message}")
+        self.assertEqual(result["issues"], [])
+
+    @patch('tools.jira_tools.requests.post')
+    @patch('tools.jira_tools.os.getenv')
+    def test_search_field_type_handling(self, mock_getenv, mock_requests_post):
+        self._setup_mock_env_vars(mock_getenv)
+        jql_query = "project = TEST"
+        fields_to_request = ["status", "assignee", "components", "custom_single_select", "custom_multi_select", "priority"]
+        
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "issues": [
+                {
+                    "key": "TEST-COMPLEX",
+                    "fields": {
+                        "status": {"name": "Blocked", "description": "Issue is blocked"}, # 'name'
+                        "assignee": {"displayName": "Dev Lead", "accountId": "123"}, # 'displayName'
+                        "components": [{"name": "Backend"}, {"name": "API"}], # list of dicts with 'name'
+                        "custom_single_select": {"value": "High"}, # 'value'
+                        "custom_multi_select": [ # list of dicts with 'value'
+                            {"value": "Feature"}, 
+                            {"value": "Improvement"}
+                        ],
+                        "priority": {"name": "Highest"} # 'name'
+                    }
+                }
+            ],
+            "maxResults": 1, "total": 1
+        }
+        mock_requests_post.return_value = mock_response
+
+        result = search_jira_issues_jql(jql_query, fields=fields_to_request, max_results=1)
+
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(len(result["issues"]), 1)
+        issue = result["issues"][0]
+        self.assertEqual(issue["key"], "TEST-COMPLEX")
+        self.assertEqual(issue["status"], "Blocked")
+        self.assertEqual(issue["assignee"], "Dev Lead")
+        self.assertEqual(issue["components"], ["Backend", "API"])
+        self.assertEqual(issue["custom_single_select"], "High")
+        self.assertEqual(issue["custom_multi_select"], ["Feature", "Improvement"])
+        self.assertEqual(issue["priority"], "Highest")
 
 
 if __name__ == '__main__':
