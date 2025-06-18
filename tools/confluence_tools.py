@@ -1,7 +1,7 @@
 import os
 import requests
 import json
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, List
 import webbrowser
 
 # Dies sind Platzhalterfunktionen. In einer echten Implementierung würden hier
@@ -521,16 +521,54 @@ def show_confluence_page(page_id: Optional[str] = None, space_key: Optional[str]
         return {"status": "error", "message": f"An error occurred while trying to open Confluence page link {page_link} in browser: {e}"}
 
 
-# Write a function for showing a confluence page comparison in the default web browser like this: "show_confluence_version_comparison(page_id: str, version_1: int, version_2: int)". The version parameters are the respective version numbers. 
+def show_confluence_version_comparison(page_id: str, version_1: int, version_2: int) -> Dict[str, str]:
+    """
+    Opens a comparison between two versions of a Confluence page in the default web browser.
+    Requires ATLASSIAN_INSTANCE_URL environment variable.
 
+    Args:
+        page_id (str): The ID of the Confluence page.
+        version_1 (int): The first version number for comparison.
+        version_2 (int): The second version number for comparison.
 
+    Returns:
+        Dict[str, str]: A dictionary with status and a message.
+    """
+    atlassian_instance_url = os.getenv("ATLASSIAN_INSTANCE_URL")
+    if not atlassian_instance_url:
+        return {"status": "error", "message": "ATLASSIAN_INSTANCE_URL environment variable is not set."}
 
-# Write a function for showing a confluence page comparison in the default web browser like this: "show_confluence_version_comparison(page_id: str, version_1: int, version_2: int)". The version parameters are the respective version numbers. AI!
+    if not page_id or not isinstance(version_1, int) or not isinstance(version_2, int):
+        return {"status": "error", "message": "Page ID and two integer version numbers must be provided."}
 
+    # Ensure version_1 is less than version_2 for a consistent diff view (older vs newer)
+    v1 = min(version_1, version_2)
+    v2 = max(version_1, version_2)
+
+    comparison_url = (
+        f"{atlassian_instance_url.rstrip('/')}/wiki/pages/diffpagesbyversion.action"
+        f"?pageId={page_id}&selectedPageVersions={v1}&selectedPageVersions={v2}"
+    )
+
+    try:
+        if webbrowser.open(comparison_url):
+            return {
+                "status": "success",
+                "message": f"Attempted to open comparison for page ID '{page_id}' (versions {v1} and {v2}) in browser. Link: {comparison_url}"
+            }
+        else:
+            return {
+                "status": "error",
+                "message": f"Failed to open Confluence page comparison link in browser: {comparison_url}. webbrowser.open returned false."
+            }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"An error occurred while trying to open Confluence page comparison link {comparison_url} in browser: {e}"
+        }
 
 
 # Write a function for accessing the confluence search endpoint, including the ability to perform CQL queries
-
 def search_confluence_cql(cql_query: str, limit: int = 25, start: int = 0, expand: Optional[str] = None) -> Dict[str, Any]:
     """
     Searches Confluence using a CQL (Confluence Query Language) query.
@@ -669,5 +707,6 @@ __all__ = [
     "update_confluence_page",
     "delete_confluence_page",
     "get_confluence_child_pages",
+    "show_confluence_version_comparison",
     "search_confluence_cql"
 ]
