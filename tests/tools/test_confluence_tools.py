@@ -17,6 +17,7 @@ from tools.confluence_tools import (
     delete_confluence_page,
     get_confluence_child_pages,
     show_confluence_page,
+    show_confluence_version_comparison,
     search_confluence_cql
 )
 
@@ -1130,6 +1131,121 @@ class TestConfluenceTools(unittest.TestCase):
         # Expect fallback link construction
         expected_link = "https://test.atlassian.net/wiki/spaces/NOSPC/pages/789"
         self.assertEqual(result["results"][0]["link"], expected_link)
+
+    # --- Tests for show_confluence_version_comparison ---
+
+    @patch('tools.confluence_tools.webbrowser.open')
+    @patch('os.getenv')
+    def test_show_confluence_version_comparison_success(self, mock_getenv, mock_webbrowser_open):
+        # Arrange
+        mock_getenv.return_value = "https://test.atlassian.net"
+        mock_webbrowser_open.return_value = True
+        page_id = "12345"
+        version_1 = 5
+        version_2 = 10
+        expected_url = f"https://test.atlassian.net/wiki/pages/diffpagesbyversion.action?pageId={page_id}&selectedPageVersions={version_1}&selectedPageVersions={version_2}"
+
+        # Act
+        result = show_confluence_version_comparison(page_id, version_1, version_2)
+
+        # Assert
+        mock_getenv.assert_called_once_with("ATLASSIAN_INSTANCE_URL")
+        mock_webbrowser_open.assert_called_once_with(expected_url)
+        self.assertEqual(result['status'], 'success')
+        self.assertIn(f"Attempted to open comparison for page ID '{page_id}' (versions {version_1} and {version_2})", result['message'])
+
+    @patch('tools.confluence_tools.webbrowser.open')
+    @patch('os.getenv')
+    def test_show_confluence_version_comparison_version_order_swapped(self, mock_getenv, mock_webbrowser_open):
+        # Arrange
+        mock_getenv.return_value = "https://test.atlassian.net"
+        mock_webbrowser_open.return_value = True
+        page_id = "12345"
+        version_1 = 10 # larger
+        version_2 = 5  # smaller
+        # The function should order them, so 5 comes before 10 in the URL
+        expected_url = f"https://test.atlassian.net/wiki/pages/diffpagesbyversion.action?pageId={page_id}&selectedPageVersions=5&selectedPageVersions=10"
+
+        # Act
+        result = show_confluence_version_comparison(page_id, version_1, version_2)
+
+        # Assert
+        mock_webbrowser_open.assert_called_once_with(expected_url)
+        self.assertEqual(result['status'], 'success')
+        self.assertIn("versions 5 and 10", result['message'])
+
+    @patch('tools.confluence_tools.webbrowser.open')
+    @patch('os.getenv')
+    def test_show_confluence_version_comparison_no_instance_url(self, mock_getenv, mock_webbrowser_open):
+        # Arrange
+        mock_getenv.return_value = None
+
+        # Act
+        result = show_confluence_version_comparison("123", 1, 2)
+
+        # Assert
+        mock_getenv.assert_called_once_with("ATLASSIAN_INSTANCE_URL")
+        mock_webbrowser_open.assert_not_called()
+        self.assertEqual(result['status'], 'error')
+        self.assertEqual(result['message'], "ATLASSIAN_INSTANCE_URL environment variable is not set.")
+
+    @patch('tools.confluence_tools.webbrowser.open')
+    @patch('os.getenv')
+    def test_show_confluence_version_comparison_invalid_inputs(self, mock_getenv, mock_webbrowser_open):
+        # Arrange
+        mock_getenv.return_value = "https://test.atlassian.net"
+
+        # Test with missing page_id
+        result_no_id = show_confluence_version_comparison("", 1, 2)
+        self.assertEqual(result_no_id['status'], 'error')
+        self.assertEqual(result_no_id['message'], "Page ID and two integer version numbers must be provided.")
+
+        # Test with non-integer version
+        result_bad_version = show_confluence_version_comparison("123", 1, "two")
+        self.assertEqual(result_bad_version['status'], 'error')
+        self.assertEqual(result_bad_version['message'], "Page ID and two integer version numbers must be provided.")
+
+        # Assert that webbrowser.open was not called for these invalid input cases
+        mock_webbrowser_open.assert_not_called()
+
+    @patch('tools.confluence_tools.webbrowser.open')
+    @patch('os.getenv')
+    def test_show_confluence_version_comparison_webbrowser_fails(self, mock_getenv, mock_webbrowser_open):
+        # Arrange
+        mock_getenv.return_value = "https://test.atlassian.net"
+        mock_webbrowser_open.return_value = False
+        page_id = "12345"
+        version_1 = 1
+        version_2 = 2
+        expected_url = f"https://test.atlassian.net/wiki/pages/diffpagesbyversion.action?pageId={page_id}&selectedPageVersions={version_1}&selectedPageVersions={version_2}"
+
+        # Act
+        result = show_confluence_version_comparison(page_id, version_1, version_2)
+
+        # Assert
+        mock_webbrowser_open.assert_called_once_with(expected_url)
+        self.assertEqual(result['status'], 'error')
+        self.assertIn("Failed to open Confluence page comparison link in browser", result['message'])
+
+    @patch('tools.confluence_tools.webbrowser.open')
+    @patch('os.getenv')
+    def test_show_confluence_version_comparison_webbrowser_raises_exception(self, mock_getenv, mock_webbrowser_open):
+        # Arrange
+        mock_getenv.return_value = "https://test.atlassian.net"
+        mock_webbrowser_open.side_effect = Exception("Test exception")
+        page_id = "12345"
+        version_1 = 1
+        version_2 = 2
+        expected_url = f"https://test.atlassian.net/wiki/pages/diffpagesbyversion.action?pageId={page_id}&selectedPageVersions={version_1}&selectedPageVersions={version_2}"
+
+        # Act
+        result = show_confluence_version_comparison(page_id, version_1, version_2)
+
+        # Assert
+        mock_webbrowser_open.assert_called_once_with(expected_url)
+        self.assertEqual(result['status'], 'error')
+        self.assertIn("An error occurred while trying to open Confluence page comparison link", result['message'])
+        self.assertIn("Test exception", result['message'])
 
 
 if __name__ == '__main__':
