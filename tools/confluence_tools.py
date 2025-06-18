@@ -165,8 +165,8 @@ def get_confluence_page(page_id: Optional[str] = None, space_key: Optional[str] 
         page_body = page_info.get("body", {}).get("storage", {}).get("value", "")
         page_version = page_info.get("version", {}).get("number")
         page_link = page_info.get("_links", {}).get("webui", "")
-        if not page_link and "base" in page_info.get("_links", {}): # Construct from base and webui if webui is relative
-            page_link = atlassian_instance_url.rstrip('/') + page_info.get("_links", {}).get("webui")
+        if page_link and page_link.startswith('/'): # If link is relative
+             page_link = f"{atlassian_instance_url.rstrip('/')}{page_link}"
 
 
         return {

@@ -487,11 +487,7 @@ class TestConfluenceTools(unittest.TestCase):
     @patch('os.getenv')
     def test_get_confluence_page_by_id_success(self, mock_getenv, mock_requests_get):
         # Setup mock environment variables
-        mock_getenv.side_effect = lambda key: {
-            "ATLASSIAN_INSTANCE_URL": "https://test.atlassian.net/wiki",
-            "ATLASSIAN_EMAIL": "test@example.com",
-            "ATLASSIAN_API_KEY": "test_api_key"
-        }.get(key)
+        self._setup_mock_env_vars(mock_getenv)
 
         # Setup mock response from requests.get
         mock_response = MagicMock()
@@ -523,11 +519,7 @@ class TestConfluenceTools(unittest.TestCase):
     @patch('requests.get')
     @patch('os.getenv')
     def test_get_confluence_page_by_space_and_title_success(self, mock_getenv, mock_requests_get):
-        mock_getenv.side_effect = lambda key: {
-            "ATLASSIAN_INSTANCE_URL": "https://test.atlassian.net/wiki",
-            "ATLASSIAN_EMAIL": "test@example.com",
-            "ATLASSIAN_API_KEY": "test_api_key"
-        }.get(key)
+        self._setup_mock_env_vars(mock_getenv)
 
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -538,7 +530,7 @@ class TestConfluenceTools(unittest.TestCase):
                 "space": {"key": "MYSPACE"},
                 "body": {"storage": {"value": "Content here"}},
                 "version": {"number": 1},
-                "_links": {"webui": "/display/MYSPACE/My+Page+Title"}
+                "_links": {"webui": "/wiki/display/MYSPACE/My+Page+Title"}
             }],
             "size": 1
         }
@@ -553,6 +545,7 @@ class TestConfluenceTools(unittest.TestCase):
         self.assertEqual(result["page_id"], "67890")
         self.assertEqual(result["title"], title)
         self.assertEqual(result["space_key"], space_key)
+        self.assertEqual(result["link"], "https://test.atlassian.net/wiki/display/MYSPACE/My+Page+Title")
         mock_requests_get.assert_called_once()
         self.assertIn(f"/rest/api/content", mock_requests_get.call_args[0][0])
         self.assertEqual(mock_requests_get.call_args[1]['params']['spaceKey'], space_key)
@@ -568,11 +561,7 @@ class TestConfluenceTools(unittest.TestCase):
     @patch('os.getenv') # Mock os.getenv for this test
     def test_get_confluence_page_insufficient_args(self, mock_getenv):
         # Configure mock_getenv to return valid values so the env var check passes
-        mock_getenv.side_effect = lambda key: {
-            "ATLASSIAN_INSTANCE_URL": "https://test.atlassian.net/wiki",
-            "ATLASSIAN_EMAIL": "test@example.com",
-            "ATLASSIAN_API_KEY": "test_api_key"
-        }.get(key, "dummy_value") # Provide a default to avoid None if a new getenv is added
+        self._setup_mock_env_vars(mock_getenv)
 
         result_no_page_id_no_title = get_confluence_page(space_key="MYSAPCE")
         self.assertEqual(result_no_page_id_no_title["status"], "error")
@@ -585,7 +574,7 @@ class TestConfluenceTools(unittest.TestCase):
     @patch('requests.get')
     @patch('os.getenv')
     def test_get_confluence_page_by_space_title_not_found(self, mock_getenv, mock_requests_get):
-        mock_getenv.side_effect = lambda key: "test_value" # Provide some value for env vars
+        self._setup_mock_env_vars(mock_getenv)
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"results": [], "size": 0} # Page not found
@@ -598,7 +587,7 @@ class TestConfluenceTools(unittest.TestCase):
     @patch('requests.get')
     @patch('os.getenv')
     def test_get_confluence_page_http_error_404(self, mock_getenv, mock_requests_get):
-        mock_getenv.side_effect = lambda key: "test_value"
+        self._setup_mock_env_vars(mock_getenv)
         mock_response = MagicMock()
         mock_response.status_code = 404
         mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(response=mock_response)
@@ -613,7 +602,7 @@ class TestConfluenceTools(unittest.TestCase):
     @patch('requests.get')
     @patch('os.getenv')
     def test_get_confluence_page_http_error_401(self, mock_getenv, mock_requests_get):
-        mock_getenv.side_effect = lambda key: "test_value"
+        self._setup_mock_env_vars(mock_getenv)
         mock_response = MagicMock()
         mock_response.status_code = 401
         mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(response=mock_response)
@@ -627,7 +616,7 @@ class TestConfluenceTools(unittest.TestCase):
     @patch('requests.get')
     @patch('os.getenv')
     def test_get_confluence_page_http_error_403(self, mock_getenv, mock_requests_get):
-        mock_getenv.side_effect = lambda key: "test_value"
+        self._setup_mock_env_vars(mock_getenv)
         mock_response = MagicMock()
         mock_response.status_code = 403
         mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(response=mock_response)
@@ -641,7 +630,7 @@ class TestConfluenceTools(unittest.TestCase):
     @patch('requests.get')
     @patch('os.getenv')
     def test_get_confluence_page_request_exception(self, mock_getenv, mock_requests_get):
-        mock_getenv.side_effect = lambda key: "test_value"
+        self._setup_mock_env_vars(mock_getenv)
         mock_requests_get.side_effect = requests.exceptions.Timeout("Connection timed out")
 
         result = get_confluence_page(page_id="123")
