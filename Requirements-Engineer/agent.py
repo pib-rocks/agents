@@ -31,12 +31,13 @@ from tools.confluence_tools import (
     get_confluence_page,
     get_confluence_child_pages,
     show_confluence_page,
+    show_confluence_version_comparison,
+    search_confluence_cql,
 
     # Writing:
     create_confluence_page,
     update_confluence_page,
     delete_confluence_page,
-    search_confluence_cql,
 
 
 )
@@ -136,6 +137,7 @@ root_agent = Agent(
         update_confluence_page,
         delete_confluence_page,
         search_confluence_cql,
+        show_confluence_version_comparison,
         # Vector DB Tools - Lade Beschreibungen dynamisch
         (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(add_requirement),
         (lambda f: setattr(f, '__doc__', get_tool_description(f.__name__) or f.__doc__) or f)(retrieve_similar_requirements),
