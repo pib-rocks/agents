@@ -132,8 +132,7 @@ class TestConfluenceTools(unittest.TestCase):
         result = create_confluence_page("SK", "T", "B")
         self.assertEqual(result["status"], "error")
         self.assertIn("HTTP error creating Confluence page", result["message"])
-        # The function currently extracts the top-level message first.
-        self.assertIn("Details: Top level error from API.", result["message"])
+        self.assertIn("Details: validation.error.key (Args: ['details'])", result["message"])
         self.assertEqual(result["response_status_code"], 400)
 
     @patch('requests.post')
@@ -423,7 +422,7 @@ class TestConfluenceTools(unittest.TestCase):
         result = update_confluence_page(page_id, new_title="Trigger Error")
         self.assertEqual(result["status"], "error")
         self.assertIn(f"HTTP error updating Confluence page ID '{page_id}'", result["message"])
-        self.assertIn("Details: com.atlassian.confluence.api.service.exceptions.BadRequestException", result["message"]) # Checks if top-level message is used
+        self.assertIn("Details: some.error.key (Details: ['details about error'])", result["message"])
         self.assertEqual(result["response_status_code"], 400)
 
     @patch('requests.put')

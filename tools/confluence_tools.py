@@ -84,10 +84,9 @@ def create_confluence_page(space_key: str, title: str, body: str, parent_id: Opt
             response_status_code = http_err.response.status_code
             try:
                 error_details = http_err.response.json()
-                # Attempt to extract a more specific error message from Confluence
-                detail_msg = error_details.get("message")
-                if not detail_msg and "data" in error_details and "errors" in error_details["data"]:
-                    # Handle cases where errors are nested, e.g., validation errors
+                detail_msg = ""
+                # Attempt to extract a more specific error message from Confluence first
+                if "data" in error_details and "errors" in error_details["data"]:
                     errors = error_details["data"]["errors"]
                     if isinstance(errors, list) and len(errors) > 0:
                         first_error = errors[0]
@@ -95,6 +94,10 @@ def create_confluence_page(space_key: str, title: str, body: str, parent_id: Opt
                              detail_msg = f"{first_error['message']['key']} (Args: {first_error['message'].get('args', [])})"
                         elif isinstance(first_error.get("message"), str):
                             detail_msg = first_error["message"]
+                
+                # If no specific error was found, fall back to the generic message
+                if not detail_msg:
+                    detail_msg = error_details.get("message")
 
                 if detail_msg:
                     error_message += f" Details: {detail_msg}"
@@ -306,17 +309,22 @@ def update_confluence_page(page_id: str, new_title: Optional[str] = None, new_bo
             response_status_code = http_err.response.status_code
             try:
                 error_details = http_err.response.json()
-                detail_msg = error_details.get("message") 
+                detail_msg = ""
+                # Try to find a specific error first
+                data_errors = error_details.get("data", {}).get("errors")
+                if data_errors and isinstance(data_errors, list) and data_errors:
+                    first_error_msg_obj = data_errors[0].get("message")
+                    if isinstance(first_error_msg_obj, dict):
+                        detail_msg = first_error_msg_obj.get("key")
+                        if detail_msg and first_error_msg_obj.get("args"):
+                            detail_msg += f" (Details: {first_error_msg_obj.get('args')})"
+                    elif isinstance(first_error_msg_obj, str):
+                        detail_msg = first_error_msg_obj
+                
+                # If no specific error was found, fall back to the generic message
                 if not detail_msg:
-                    data_errors = error_details.get("data", {}).get("errors")
-                    if data_errors and isinstance(data_errors, list) and data_errors:
-                        first_error_msg_obj = data_errors[0].get("message")
-                        if isinstance(first_error_msg_obj, dict):
-                            detail_msg = first_error_msg_obj.get("key")
-                            if detail_msg and first_error_msg_obj.get("args"):
-                                detail_msg += f" (Details: {first_error_msg_obj.get('args')})"
-                        elif isinstance(first_error_msg_obj, str):
-                            detail_msg = first_error_msg_obj
+                    detail_msg = error_details.get("message")
+
                 if detail_msg:
                     error_message += f" Details: {detail_msg}"
             except json.JSONDecodeError:
