@@ -58,9 +58,12 @@ def create_confluence_page(space_key: str, title: str, body: str, parent_id: Opt
         created_page_data = response.json()
         page_id = created_page_data.get("id")
         page_title = created_page_data.get("title")
-        page_link = created_page_data.get("_links", {}).get("webui", "")
+        
+        links = created_page_data.get("_links", {})
+        page_link = links.get("webui", "")
         if page_link and page_link.startswith('/'): # If link is relative
-             page_link = f"{atlassian_instance_url.rstrip('/')}{page_link}"
+            base_url = links.get("base", atlassian_instance_url.rstrip('/'))
+            page_link = f"{base_url.rstrip('/')}{page_link}"
 
 
         return {
@@ -164,9 +167,12 @@ def get_confluence_page(page_id: Optional[str] = None, space_key: Optional[str] 
         # Content is usually in body.storage.value
         page_body = page_info.get("body", {}).get("storage", {}).get("value", "")
         page_version = page_info.get("version", {}).get("number")
-        page_link = page_info.get("_links", {}).get("webui", "")
+        
+        links = page_info.get("_links", {})
+        page_link = links.get("webui", "")
         if page_link and page_link.startswith('/'): # If link is relative
-             page_link = f"{atlassian_instance_url.rstrip('/')}{page_link}"
+            base_url = links.get("base", atlassian_instance_url.rstrip('/'))
+            page_link = f"{base_url.rstrip('/')}{page_link}"
 
 
         return {
@@ -275,9 +281,11 @@ def update_confluence_page(page_id: str, new_title: Optional[str] = None, new_bo
         
         updated_page_data = response.json()
         
-        updated_page_link = updated_page_data.get("_links", {}).get("webui", "")
+        links = updated_page_data.get("_links", {})
+        updated_page_link = links.get("webui", "")
         if updated_page_link and updated_page_link.startswith('/'): # If link is relative
-            updated_page_link = f"{atlassian_instance_url.rstrip('/')}{updated_page_link}"
+            base_url = links.get("base", atlassian_instance_url.rstrip('/'))
+            updated_page_link = f"{base_url.rstrip('/')}{updated_page_link}"
 
         return {
             "status": "success",
