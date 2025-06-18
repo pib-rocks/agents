@@ -520,6 +520,15 @@ def show_confluence_page(page_id: Optional[str] = None, space_key: Optional[str]
     except Exception as e:
         return {"status": "error", "message": f"An error occurred while trying to open Confluence page link {page_link} in browser: {e}"}
 
+
+# Write a function for showing a confluence page comparison in the default web browser like this: "show_confluence_version_comparison(page_id: str, version_1: int, version_2: int)". The version parameters are the respective version numbers. 
+
+
+
+# Write a function for showing a confluence page comparison in the default web browser like this: "show_confluence_version_comparison(page_id: str, version_1: int, version_2: int)". The version parameters are the respective version numbers. AI!
+
+
+
 # Write a function for accessing the confluence search endpoint, including the ability to perform CQL queries
 
 def search_confluence_cql(cql_query: str, limit: int = 25, start: int = 0, expand: Optional[str] = None) -> Dict[str, Any]:
