@@ -496,15 +496,6 @@ def show_confluence_page(page_id: Optional[str] = None, space_key: Optional[str]
     page_link = page_details.get("link")
     actual_page_id = page_details.get("page_id", "N/A") # Get the actual ID if found by title/space
 
-    if page_link and page_link.startswith("/"):
-        atlassian_instance_url = os.getenv("ATLASSIAN_INSTANCE_URL")
-        if atlassian_instance_url:
-            base_url = atlassian_instance_url.rstrip('/')
-            if page_link.startswith("/wiki/"): # e.g. /wiki/display/FOO
-                page_link = f"{base_url}{page_link}"
-            else: # e.g. /display/FOO, needs /wiki prefix
-                page_link = f"{base_url}/wiki{page_link}"
-    
     if not page_link:
         if page_id:
             return {"status": "error", "message": f"No web link found for Confluence page ID '{page_id}'."}
